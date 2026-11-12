@@ -1,0 +1,157 @@
+<title>Hands-Free Recipe</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  /* Layout: one reading column on a kitchen-tile ground; diagrams get full column width in framed panels */
+  :root {
+    --bg: #f2f5f1;
+    --surface: #ffffff;
+    --fg: #1c2420;
+    --muted: #5d6a63;
+    --line: #d5ddd7;
+    --accent: #2c7a52;        /* basil */
+    --accent-soft: #dcefe3;
+    --warm: #b9781a;          /* saffron, used for the pedal stations */
+    --warm-soft: #f7ebd5;
+    --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+    --font-body: "IBM Plex Sans", "Helvetica Neue", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121714; --surface: #1a211d; --fg: #e5ece7; --muted: #9aa8a0; --line: #2d3832;
+      --accent: #63c48f; --accent-soft: #1f3a2b; --warm: #e6a84a; --warm-soft: #3a2c15;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121714; --surface: #1a211d; --fg: #e5ece7; --muted: #9aa8a0; --line: #2d3832;
+    --accent: #63c48f; --accent-soft: #1f3a2b; --warm: #e6a84a; --warm-soft: #3a2c15;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.6;
+  }
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+    padding-block: 56px 80px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid;
+    gap: 56px;
+  }
+  h1, h2 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(40px, 7vw, 64px); font-weight: 800; line-height: 1.02; letter-spacing: -0.02em; }
+  h2 { font-size: clamp(24px, 3.2vw, 30px); font-weight: 600; line-height: 1.2; }
+  p { margin: 0; max-width: 65ch; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent); font-weight: 500;
+  }
+  section { display: grid; gap: 18px; }
+  .lede { font-size: 20px; color: var(--muted); max-width: 58ch; }
+
+  header { display: grid; gap: 18px; }
+
+  /* The three pedal stations: the one detail only this project has */
+  .stations { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .station {
+    background: var(--warm-soft);
+    border-radius: 10px;
+    padding: 16px;
+    display: grid; gap: 4px;
+  }
+  .station b { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
+  .station span { color: var(--muted); font-size: 15px; }
+  .station .angle { font-family: var(--font-mono); font-size: 13px; color: var(--warm); }
+
+  ul.parts { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+  ul.parts li { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  ul.parts li b { font-weight: 600; }
+  ul.parts li span { color: var(--muted); }
+
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+    overflow-x: auto;
+  }
+  .diagram pre.mermaid { margin: 0; background: transparent; text-align: center; font-family: var(--font-body); }
+  .caption { font-size: 14px; color: var(--muted); }
+
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 16px; }
+  th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--font-mono); font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  .chip { display: inline-block; font-family: var(--font-mono); font-size: 13px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+
+  dl.specs { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  dl.specs div { border-top: 2px solid var(--accent); padding-top: 10px; display: grid; gap: 2px; }
+  dt { font-size: 14px; color: var(--muted); }
+  dd { margin: 0; font-family: var(--font-mono); font-size: 18px; font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 560px) {
+    .stations { grid-template-columns: 1fr; }
+    ul.parts li { grid-template-columns: 1fr; gap: 2px; }
+  }
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">Interaction design prototype</div>
+    <h1>Hands-Free Recipe</h1>
+    <p class="lede">A recipe screen you control with your feet. It turns to face you as you move around the kitchen.</p>
+  </header>
+
+  <section>
+    <h2>The idea</h2>
+    <p>Cooking with a phone means touching the screen with dirty hands, and the screen faces the wrong way as you move. Here, a foot pedal sits at each work station. Step on it and the screen turns to you; step again to turn the page or hear the step read aloud.</p>
+    <div class="stations" aria-label="The three stations">
+      <div class="station"><span class="angle">Pedal 1 · 30°</span><b>Sink</b><span>Washing and rinsing</span></div>
+      <div class="station"><span class="angle">Pedal 2 · 90°</span><b>Counter</b><span>Chopping and prep</span></div>
+      <div class="station"><span class="angle">Pedal 3 · 150°</span><b>Stove</b><span>Cooking and stirring</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>System</h2>
+    <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  P1["Sink pedal"] --> MCU
+  P2["Counter pedal"] --> MCU
+  P3["Stove pedal"] --> MCU
+  MCU["Arduino Uno"] -- "angle" --> S["Servo<br/>turns the screen"]
+  MCU -- "USB" --> W["Recipe web page"]
+  W --> D["Screen"]
+  W --> V["Voice"]
+</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>Pedal logic</h2>
+    <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  A(["Step on a pedal"]) --> F{"Screen facing<br/>this pedal?"}
+  F -- "No" --> T["Turn screen<br/>to this station"]
+  F -- "Yes" --> G{"Press type"}
+  G -- "Tap" --> N["Next step"]
+  G -- "Double tap" --> B["Previous step"]
+  G -- "Hold" --> RD["Read step aloud"]
+</pre>
+    </div>
+    <p class="caption">The Uno remembers which station the screen was last turned to. While the voice is reading, a tap just stops it.</p>
+  </section>
+</div>

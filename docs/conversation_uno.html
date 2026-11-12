@@ -1,0 +1,233 @@
+<title>脚踏菜谱开发记录（Uno 阶段）</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  /* Layout: a single reading column; each exchange is the question (tinted) followed by the answer (plain) */
+  :root {
+    --bg: #f2f5f1;
+    --surface: #ffffff;
+    --fg: #1c2420;
+    --muted: #5d6a63;
+    --line: #d5ddd7;
+    --accent: #2c7a52;
+    --accent-soft: #dcefe3;
+    --warm: #9a6414;
+    --warm-soft: #f7ebd5;
+    --font-body: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121714; --surface: #1a211d; --fg: #e5ece7; --muted: #9aa8a0; --line: #2d3832;
+      --accent: #63c48f; --accent-soft: #1f3a2b; --warm: #e6a84a; --warm-soft: #3a2c15;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121714; --surface: #1a211d; --fg: #e5ece7; --muted: #9aa8a0; --line: #2d3832;
+    --accent: #63c48f; --accent-soft: #1f3a2b; --warm: #e6a84a; --warm-soft: #3a2c15;
+    color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.75; }
+  .page {
+    max-width: 760px; margin: 0 auto;
+    padding-block: 48px 72px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; gap: 40px;
+  }
+  header { display: grid; gap: 12px; }
+  h1 { font-size: clamp(28px, 5vw, 38px); line-height: 1.25; margin: 0; text-wrap: balance; }
+  h2 { font-size: 20px; margin: 0; }
+  p { margin: 0; }
+  .lede { color: var(--muted); max-width: 60ch; }
+  .eyebrow { font-family: var(--font-mono); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  code { font-family: var(--font-mono); font-size: .88em; background: var(--accent-soft); color: var(--fg); padding: 0 .3em; border-radius: 4px; }
+
+  nav ol { margin: 0; padding-left: 1.4em; color: var(--muted); display: grid; gap: 2px; }
+  nav a { color: var(--accent); text-decoration: none; }
+  nav a:hover, nav a:focus-visible { text-decoration: underline; }
+
+  .chapter { display: grid; gap: 18px; scroll-margin-top: 16px; }
+  .chapter > h2 { padding-bottom: 8px; border-bottom: 2px solid var(--accent); }
+  .ex { display: grid; gap: 10px; }
+  .q {
+    background: var(--warm-soft);
+    border-radius: 10px;
+    padding: 10px 14px;
+    justify-self: start;
+    max-width: 100%;
+  }
+  .q::before { content: "我"; display: block; font-size: 12px; font-weight: 700; color: var(--warm); letter-spacing: .04em; }
+  .a { padding-left: 14px; border-left: 2px solid var(--line); display: grid; gap: 8px; min-width: 0; }
+  .a::before { content: "Claude"; font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: .04em; }
+  .a ul, .a ol { margin: 0; padding-left: 1.3em; display: grid; gap: 4px; }
+  .note { color: var(--muted); font-size: 14px; }
+  pre.log { margin: 0; font-family: var(--font-mono); font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; overflow-x: auto; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; font-size: 15px; width: 100%; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 13px; color: var(--muted); font-weight: 500; }
+  footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">Hands-Free Recipe · 对话记录</div>
+    <h1>脚踏菜谱：从接线到网页（Arduino Uno 阶段）</h1>
+    <p class="lede">这是我和 Claude 一起做「脚踏菜谱控制器」的对话整理，截止到改用 ESP32-C6 之前。三个脚踏按钮装在水槽、备菜台、灶台下方；舵机带动屏幕转向；网页显示菜谱并朗读。我的问题保留原话，回答做了精简。</p>
+  </header>
+
+  <nav aria-label="目录">
+    <ol>
+      <li><a href="#plan">起步：接下来该做什么</a></li>
+      <li><a href="#buttons">按钮没反应</a></li>
+      <li><a href="#servo">舵机不转</a></li>
+      <li><a href="#web">连接网页</a></li>
+      <li><a href="#english">一直未连接 + 英文版菜谱</a></li>
+      <li><a href="#reading">朗读控制和步骤长度</a></li>
+      <li><a href="#layout">页面重叠、每步配料、中英切换、图片</a></li>
+    </ol>
+  </nav>
+
+  <section class="chapter" id="plan">
+    <h2>1. 起步：接下来该做什么</h2>
+    <div class="ex">
+      <p class="q">这是我的厨房菜谱控制器设想，我想要你教我一下现在接下来该做什么。我要接 Arduino 并控制网页菜谱，设想使用三个按钮，分别设置在厨房的下方。点击按钮时先检测舵机是否已经转向按钮方位，如果没有先执行转向；如果已经在按钮方位，那就执行让菜谱翻页，双击则是让菜谱返回上一页，长按播放这一页的菜谱操作。</p>
+      <div class="a">
+        <p>现有的程序已经实现了这套逻辑：没朝向时任何操作只转向；已朝向时单击下一页、双击上一页、长按朗读。接下来是一步步接硬件，每步只加一样东西：</p>
+        <ol>
+          <li>只插 Uno、上传固件，串口监视器（115200）里应看到 <code>READY</code> / <code>STATION 1 COUNTER</code> / <code>ARRIVED 1</code>。</li>
+          <li>接三个按钮（D2/D3/D4 到 GND，不需要电阻），测试单击、双击、长按的输出。</li>
+          <li>接 SG90 空载测试舵机，用 <code>ANGLE 0 25</code> 这样的命令校准角度。</li>
+          <li>关掉串口监视器，用 Chrome 或 Edge 打开网页，点「连接 Arduino」。</li>
+          <li>装进厨房：换大舵机并配独立 5–6V 电源（必须和 Uno 共地），按钮换成脚踏开关。</li>
+        </ol>
+        <p class="note">普通舵机不能回报实际角度，「是否已朝向」是程序记住的位置；如果要真正检测，需要带反馈的舵机或位置传感器。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="chapter" id="buttons">
+    <h2>2. 按钮没反应</h2>
+    <div class="ex">
+      <p class="q">我已经接好线了，但是按钮没反应</p>
+      <div class="a">
+        <p>Claude 直接读了串口：Uno 一重启就输出 <code>READY</code>，固件正常；但按按钮的 25 秒里没有任何输出，说明问题在接线。排查方法：</p>
+        <ul>
+          <li>先用一根杜邦线把 D3 和 GND 碰一下，能触发就说明问题在按钮本身。</li>
+          <li>四脚小按键同侧的两个脚内部是通的，要用<b>对角线</b>的两个脚，并且跨在面包板中间的凹槽上。</li>
+          <li>确认插的是数字 2/3/4，不是 A2/A3/A4 或 TX/RX。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="ex">
+      <p class="q">开关分正负极吗</p>
+      <div class="a">
+        <p>普通开关不分。要注意的是：三脚微动开关接 C 和 NO；带 VCC/GND/OUT 的按钮模块分极性，而且逻辑是反的，需要改代码。</p>
+      </div>
+    </div>
+    <div class="ex">
+      <p class="q">（贴出串口日志：按钮按下后依次出现 STATION 0 SINK、STATION 1 COUNTER、STATION 2 STOVE）</p>
+      <div class="a">
+        <p>按钮通了，三个站点都能转向。下一步继续按同一个按钮测试 <code>NEXT</code> / <code>PREV</code> / <code>READ</code>。日志里有一处值得注意：</p>
+        <pre class="log">ARRIVED 2
+STATREADY</pre>
+        <p><code>STAT</code> 打了一半就变成 <code>READY</code>，说明 Uno 在转向时重启了，很可能是舵机从 Uno 的 5V 取电、电流不够。可以在舵机电源上并 470–1000µF 电容，最好用独立电源并共地。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="chapter" id="servo">
+    <h2>3. 舵机不转</h2>
+    <div class="ex">
+      <p class="q">舵机没工作</p>
+      <div class="a">
+        <p>日志里的 <code>ARRIVED</code> 只是程序按时间算的，不代表舵机真的转了。检查：信号线（橙/黄）接 D9，红线接 5V，棕线接 GND；插头别插反；用外部电源时要和 Uno 共地。然后用 IDE 自带的 <b>文件 → 示例 → Servo → Sweep</b> 单独测舵机。</p>
+      </div>
+    </div>
+    <div class="ex">
+      <p class="q">传了，舵机不动</p>
+      <div class="a">
+        <p>Sweep 也不动，说明问题在硬件本身。最快的判断方法是用手轻拧摇臂：很松说明没电或没信号，查三根线；很紧、拧不动说明有电但带不动，换外部电源。</p>
+      </div>
+    </div>
+    <div class="ex">
+      <p class="q">好了。舵机转了，硬件没问题。怎么链接软件</p>
+      <div class="a">
+        <ol>
+          <li>把 <code>recipe_controller.ino</code> 重新传回去（板子里现在是 Sweep）。</li>
+          <li><b>关掉串口监视器</b>：一个串口同一时间只能被一个程序占用。</li>
+          <li>用 Edge 或 Chrome 打开 <code>recipe_display.html</code>（Safari 不支持网页串口）。</li>
+          <li>点「连接 Arduino」，选 USB Serial 端口，再选一道菜。</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="chapter" id="web">
+    <h2>4. 连接网页</h2>
+    <div class="ex">
+      <p class="q">一直显示未连接，同时我还想要你把菜谱改成英文版</p>
+      <div class="a">
+        <p><b>未连接的原因：</b>Arduino IDE 的串口监视器一直占着端口，网页打不开它，而原来的网页失败了也不提示。网页改成了：</p>
+        <ul>
+          <li>连接失败时用红字说明原因和解决办法（比如「端口被占用，请关闭串口监视器」）。</li>
+          <li>授权过一次之后，打开网页或插拔 USB 时自动重连。</li>
+        </ul>
+        <p id="english"><b>英文版：</b>原来的 HowToCook 只有中文，所以菜谱来源换成了免费的英文菜谱库 TheMealDB（14 个分类，可搜索）。界面、站点名（Sink / Counter / Stove）和朗读语音都换成了英文。原来的中文页面另存了一份。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="chapter" id="reading">
+    <h2>5. 朗读控制和步骤长度</h2>
+    <div class="ex">
+      <p class="q">我希望如果正在阅读的时候点击按钮，可以暂停阅读，如果再 hold 的话从头开始阅读。同时，每一步不要写的太长，视觉清晰一点</p>
+      <div class="a">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>状态</th><th>单击</th><th>双击</th><th>长按</th></tr></thead>
+            <tbody>
+              <tr><td>正在朗读</td><td>停止朗读</td><td>停止朗读</td><td>从头重读</td></tr>
+              <tr><td>没在朗读</td><td>下一步</td><td>上一步</td><td>从头朗读</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul>
+          <li>朗读时页面上显示「🔊 Reading · tap to stop」。停止后再单击一次才翻页，踩停朗读不会顺带翻页。</li>
+          <li>每页只放一个短动作（约 110 个字符以内），时间和温度高亮，比如 <code>10 mins</code>、<code>180C</code>。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="chapter" id="layout">
+    <h2>6. 页面重叠、每步配料、中英切换、图片</h2>
+    <div class="ex">
+      <p class="q">食材准备和操作提示会有重叠，同时你可以在每一步标注需要的食材</p>
+      <div class="a">
+        <ul>
+          <li>配料很多时内容不再盖住顶部和底部，超过 10 种配料时改成小字三栏。</li>
+          <li>每一步下面用小标签列出这一步用到的配料和用量（例如 <code>1 tsp Chilli Powder</code>），长按朗读时也会读出来。配料是靠比对步骤文字找出来的，偶尔会多标或漏标。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="ex">
+      <p class="q">可以加切换中英文的按钮吗</p>
+      <div class="a">
+        <p>顶部加了「中文 / English」按钮，一键切换界面、菜谱来源（中文用 HowToCook，英文用 TheMealDB）和朗读语音。两种语言各自记住看到哪道菜、哪一步。两边是不同的菜谱库，不是同一道菜的翻译。</p>
+      </div>
+    </div>
+    <div class="ex">
+      <p class="q">首页的图片显示不全，其次步骤中如果有图片的话可以添加</p>
+      <div class="a">
+        <p>图片移到文字右边，按原比例完整显示；窄屏时排到文字下面。中文菜谱里有步骤图的会显示在对应步骤旁边，没有成品图时首页用最后一张步骤图。英文菜谱库每道菜只有一张成品图。</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>到这里为止都在用 Arduino Uno。之后换成了 ESP32-C6 和四线反馈舵机，不在这份记录里。</footer>
+</div>
