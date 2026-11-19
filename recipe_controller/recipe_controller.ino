@@ -1,7 +1,9 @@
 /*
  * Hands-Free Recipe —— 脚踏菜谱控制器（Arduino Uno）
  *
- * 三个按钮分别装在 水槽 / 备菜台 / 灶台 下方的踢脚板位置。
+ * 三个按钮按位置装在台面下的踢脚板：左 = D4，中 = D3，右 = D2。
+ * 站点编号按位置从左到右：0 左、1 中、2 右。
+ * 每个位置是哪个厨房区域（水槽 / 切配 / 灶台）由网页的「厨房设置」决定，固件不用改。
  * 舵机带动屏幕支架水平转向。
  *
  * 每个按钮的逻辑：
@@ -30,13 +32,13 @@
 
 // ---------------- 引脚与参数（按实际情况修改） ----------------
 const uint8_t NUM_STATIONS = 3;
-const uint8_t BUTTON_PIN[NUM_STATIONS] = {2, 3, 4};   // 按钮一端接这里，另一端接 GND
-const uint8_t LED_PIN[NUM_STATIONS]    = {5, 6, 7};   // 可选：指示屏幕朝向哪一站
+const uint8_t BUTTON_PIN[NUM_STATIONS] = {4, 3, 2};   // 左 / 中 / 右 按钮。一端接这里，另一端接 GND
+const uint8_t LED_PIN[NUM_STATIONS]    = {5, 6, 7};   // 可选：左 / 中 / 右 指示灯，显示屏幕朝向哪一站
 const uint8_t SERVO_PIN = 9;
 
-int stationAngle[NUM_STATIONS] = {30, 90, 150};       // 水槽 / 备菜台 / 灶台 对应的舵机角度
-const char* const STATION_NAME[NUM_STATIONS] = {"SINK", "COUNTER", "STOVE"};
-const uint8_t START_STATION = 1;                      // 开机时朝向备菜台
+int stationAngle[NUM_STATIONS] = {30, 90, 150};       // 屏幕朝向 左 / 中 / 右 时的舵机角度（方向反了就对调 30 和 150，或用 ANGLE 命令校准）
+const char* const STATION_NAME[NUM_STATIONS] = {"LEFT", "MIDDLE", "RIGHT"};
+const uint8_t START_STATION = 1;                      // 开机时朝向中间
 
 const unsigned long DEBOUNCE_MS    = 25;   // 消抖
 const unsigned long DOUBLE_GAP_MS  = 350;  // 两次点击间隔小于此值算双击

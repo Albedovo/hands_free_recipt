@@ -344,7 +344,7 @@
   .zone-list .zi { font-size: 22px; }
   .zone-list .zt b { display: block; text-transform: capitalize; }
   .zone-list .zt small { color: var(--muted); }
-  .zone-list select { border-radius: 10px; padding: 6px 8px; font-size: 14px; }
+  .zone-list .zped { font-size: 13px; font-weight: 600; color: var(--z); white-space: nowrap; }
   .zone-list button { border-radius: 10px; padding: 6px 10px; }
   .toggles { display: flex; flex-wrap: wrap; gap: 8px; }
   details.log { margin-top: 18px; font-size: 13px; }
@@ -372,7 +372,7 @@
     .legend { display: none; }
     .layout-types { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .zone-list li { grid-template-columns: 26px 26px minmax(0, 1fr) auto auto; }
-    .zone-list li select { grid-column: 3 / -1; grid-row: 2; justify-self: start; }
+    .zone-list li .zped { grid-column: 3 / -1; grid-row: 2; }
   }
   @media (max-height: 560px) { .legend { display: none; } }
 </style>
@@ -430,6 +430,7 @@
     <div class="toggles">
       <button id="lockBtn" aria-pressed="false" data-i18n="lock"></button>
       <button id="autoBtn" aria-pressed="false" data-i18n="auto"></button>
+      <button id="mirrorBtn" aria-pressed="false" data-i18n="mirror"></button>
     </div>
     <p class="note" data-i18n="optionsNote"></p>
 
@@ -449,12 +450,12 @@ const I18N = {
     tagline: '脚踏菜谱', pick: '选择菜谱', pickTitle: '选择菜谱 (/)',
     settings: ' 厨房设置', settingsTitle: '厨房布局与设置',
     layoutType: '厨房布局', zoneOrder: '区域顺序（从左到右，最上面 = 最左边）',
-    pedalNote: '踏板 1 / 2 / 3 对应 Arduino 的 D2 / D3 / D4，默认每个区域一个踏板。',
+    pedalNote: '三个脚踏固定在台面下的左、中、右。调整区域顺序后，每个区域自动使用它下面的那个踏板。如果踩左边的踏板，「你在这」却出现在右边，就切换下面的「踏板左右对调」。',
     resetLayout: '恢复默认顺序', options: '操作',
     optionsNote: '锁定转向：屏幕不动，任何踏板都直接翻页。自动朗读：翻页后自动读出这一页。',
     lock: '锁定转向', auto: '自动朗读',
     layouts: { line: ['长条形', '一字形台面'], l: ['L 形', '即将支持'], galley: ['双排', '即将支持'], island: ['岛台', '即将支持'] },
-    moveLeft: '往左移', moveRight: '往右移', pedalN: n => `踏板 ${n}`, noPedal: '无踏板',
+    moveLeft: '往左移', moveRight: '往右移', pedalN: i => `${['左', '中', '右'][i]}踏板`, mirror: '踏板左右对调',
     connected: '已连接', notConnected: '连接 Arduino', failed: '连接失败', disconnect: '断开',
     busy: '串口被占用：请关闭 Arduino IDE 的串口监视器（以及其他打开本页的标签），再点连接。',
     noSerial: '这个浏览器不支持网页串口，请用电脑上的 Chrome 或 Edge 打开。手机上可以点厨房条上的区域来模拟“走到这里”。',
@@ -463,8 +464,7 @@ const I18N = {
     goTo: z => `→ 走到 ${z}`, youAreAt: z => `✓ 你在 ${z}`,
     startAt: z => `从 ${z} 开始`, startSub: '踩一下踏板翻页',
     steps: n => (n > 0 ? `往右 ${n} 格` : `往左 ${-n} 格`),
-    pressPedal: n => `到了踩 ${n} 号踏板`,
-    noPedalThere: '这个区域没有踏板',
+    pressPedal: i => `到了踩${['左边', '中间', '右边'][i]}的踏板`,
     turningScreen: '屏幕正在转过来…', lockedNote: '已锁定转向',
     stepOf: (n, t) => `第 ${n} / ${t} 步`, stepN: n => `第 ${n} 步`, ready: '准备', stepsN: n => `共 ${n} 步`,
     serves: n => `${n} 人份`, minutes: n => `约 ${n} 分钟`,
@@ -472,7 +472,7 @@ const I18N = {
     doneLook: '做好的样子', careful: '注意',
     then: '接下来', nextStep: '下一步', goNext: z => `→ 去 ${z}`, finish: '做完这一页就可以上桌了',
     prev: '← 上一页', next: '下一页 →', read: '🔊 朗读', stop: '■ 停止',
-    legend: '脚踏：<b>单击</b> 下一页 · <b>双击</b> 上一页 · <b>长按</b> 朗读 ｜ 键盘：→ ← 空格 · 1/2/3 走到踏板',
+    legend: '脚踏：<b>单击</b> 下一页 · <b>双击</b> 上一页 · <b>长按</b> 朗读 ｜ 键盘：→ ← 空格 · 1/2/3 走到左/中/右',
     last: '已经是最后一页', first: '已经是第一页', stopped: '⏸ 已停止 · 长按重新朗读',
     noSpeech: '这个浏览器不支持朗读', turning: z => `屏幕转向 ${z}`,
     locked: '已锁定转向', unlocked: '已解除锁定', log: '串口日志',
@@ -481,12 +481,12 @@ const I18N = {
     tagline: 'foot-pedal cookbook', pick: 'Choose a recipe', pickTitle: 'Choose a recipe (/)',
     settings: ' Kitchen', settingsTitle: 'Kitchen layout & settings',
     layoutType: 'Kitchen layout', zoneOrder: 'Zone order (left to right — top of the list is the far left)',
-    pedalNote: 'Pedals 1 / 2 / 3 are Arduino pins D2 / D3 / D4. By default each zone has its own pedal.',
+    pedalNote: 'The three pedals sit under the left, middle and right of the counter. Reorder the zones and each zone uses the pedal under it. If stepping on the left pedal marks you on the right, switch “Swap pedal left/right” below.',
     resetLayout: 'Reset to default', options: 'Options',
     optionsNote: 'Lock turning: the screen stays still and every pedal turns the page. Auto read: each page is read aloud after it turns.',
     lock: 'Lock turning', auto: 'Auto read',
     layouts: { line: ['Straight', 'One-wall counter'], l: ['L-shape', 'Coming soon'], galley: ['Galley', 'Coming soon'], island: ['Island', 'Coming soon'] },
-    moveLeft: 'Move left', moveRight: 'Move right', pedalN: n => `Pedal ${n}`, noPedal: 'No pedal',
+    moveLeft: 'Move left', moveRight: 'Move right', pedalN: i => `${['Left', 'Middle', 'Right'][i]} pedal`, mirror: 'Swap pedal left/right',
     connected: 'Connected', notConnected: 'Connect Arduino', failed: 'Connection failed', disconnect: 'Disconnect',
     busy: 'The port is busy. Close the Arduino IDE Serial Monitor (and other tabs using it), then click Connect again.',
     noSerial: 'This browser has no Web Serial. Use Chrome or Edge on a computer. On a phone, tap a zone on the kitchen strip to pretend you walked there.',
@@ -495,8 +495,7 @@ const I18N = {
     goTo: z => `→ Go to the ${z}`, youAreAt: z => `✓ You're at the ${z}`,
     startAt: z => `Start at the ${z}`, startSub: 'tap a pedal to turn the page',
     steps: n => (n > 0 ? `${n} to the right` : `${-n} to the left`),
-    pressPedal: n => `then tap pedal ${n}`,
-    noPedalThere: 'That zone has no pedal',
+    pressPedal: i => `then tap the ${['left', 'middle', 'right'][i]} pedal`,
     turningScreen: 'Screen is turning…', lockedNote: 'Turning locked',
     stepOf: (n, t) => `Step ${n} of ${t}`, stepN: n => `Step ${n}`, ready: 'Get ready', stepsN: n => `${n} steps`,
     serves: n => `Serves ${n}`, minutes: n => `about ${n} min`,
@@ -504,7 +503,7 @@ const I18N = {
     doneLook: 'Done when', careful: 'Careful',
     then: 'Then', nextStep: 'Next step', goNext: z => `→ go to the ${z}`, finish: 'Finish this page and it is ready to serve',
     prev: '← Back', next: 'Next →', read: '🔊 Read', stop: '■ Stop',
-    legend: 'Pedal: <b>tap</b> next · <b>double tap</b> back · <b>hold</b> read aloud ｜ Keys: → ← Space · 1/2/3 walk to pedal',
+    legend: 'Pedal: <b>tap</b> next · <b>double tap</b> back · <b>hold</b> read aloud ｜ Keys: → ← Space · 1/2/3 walk left/middle/right',
     last: 'This is the last page', first: 'This is the first page', stopped: '⏸ Stopped · hold to read again',
     noSpeech: 'This browser cannot read aloud', turning: z => `Screen turning to the ${z}`,
     locked: 'Turning locked', unlocked: 'Turning unlocked', log: 'Serial log',
@@ -518,7 +517,7 @@ const ZONES = {
   cook: { icon: '🔥', name: L('灶台', 'stove'), short: L('灶台', 'Stove'), what: L('烧水、炒、煮', 'Boil, fry, simmer') },
 };
 const ZONE_IDS = Object.keys(ZONES);
-const DEFAULT_LAYOUT = { type: 'line', order: ['wash', 'prep', 'cook'], pedal: { wash: 0, prep: 1, cook: 2 } };
+const DEFAULT_LAYOUT = { type: 'line', order: ['wash', 'prep', 'cook'] };
 
 /* ---------- Recipes ----------
    One step = one zone. Each line in `how` becomes its own page, so the screen never needs scrolling.
@@ -739,6 +738,10 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
 };
 let lang = store.get('hfr.lang') === 'en' ? 'en' : 'zh';
+// Pedals are fixed under the counter by position. `state.at` is a position (0 left … 2 right).
+// Arduino station numbers go through toPos(); with "swap" on, station 0 is the right-hand pedal.
+let mirrored = store.get('hfr.mirror') ?? true;
+const toPos = i => (mirrored ? 2 - i : i);   // also turns a position back into a station number
 let T = I18N[lang];
 const t = o => (o && typeof o === 'object' ? (o[lang] ?? o.zh) : o);
 const $ = id => document.getElementById(id);
@@ -748,9 +751,7 @@ function loadLayout() {
   if (!s || !Array.isArray(s.order) || s.order.length !== ZONE_IDS.length || !ZONE_IDS.every(z => s.order.includes(z))) {
     return structuredClone(DEFAULT_LAYOUT);
   }
-  const pedal = {};
-  for (const z of ZONE_IDS) pedal[z] = [0, 1, 2, -1].includes(s.pedal?.[z]) ? s.pedal[z] : DEFAULT_LAYOUT.pedal[z];
-  return { type: 'line', order: s.order, pedal };
+  return { type: 'line', order: s.order };
 }
 let layout = loadLayout();
 function saveLayout() { store.set('hfr.layout3', layout); render(); renderLayoutEditor(); }
@@ -778,7 +779,8 @@ function pagesOf(r) {
 }
 const page = () => state.recipe.pages[state.page];
 const zoneLabel = z => `${ZONES[z].icon} ${t(ZONES[z].name)}`;
-const zonesAt = p => layout.order.filter(z => layout.pedal[z] === p);
+const zonesAt = p => (layout.order[p] ? [layout.order[p]] : []);
+const pedalOf = z => layout.order.indexOf(z);
 function targetZone() {
   const p = page();
   return p.type === 'step' ? p.zone : state.recipe.steps[0].zone;
@@ -816,10 +818,9 @@ function stripHTML(target, { preview = false } = {}) {
     const cls = ['zone'];
     if (i === ti) cls.push('target');
     if (hereIdx.includes(i)) cls.push('here');
-    const p = layout.pedal[z];
     return `<${tag} class="${cls.join(' ')}" data-zone="${z}" style="--z:var(--z-${z})">
       <span class="zi">${ZONES[z].icon}</span><span class="zt"><span class="zn">${esc(t(ZONES[z].short))}</span>
-      <span class="zp">${p >= 0 ? T.pedalN(p + 1) : T.noPedal}</span></span></${tag}>`;
+      <span class="zp">${T.pedalN(i)}</span></span></${tag}>`;
   }).join('');
 
   let flags = '', track = '';
@@ -851,12 +852,11 @@ function bannerHTML(target) {
     const sub = intro ? T.startSub : state.locked ? T.lockedNote : '';
     return `<div class="banner ok"><b>${text}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;
   }
-  const pedal = layout.pedal[target];
   const parts = [];
   if (d !== null) parts.push(T.steps(d));
   if (state.moving) parts.push(T.turningScreen);
   else if (state.locked) parts.push(T.lockedNote);
-  else if (pedal >= 0) parts.push(T.pressPedal(pedal + 1));
+  else parts.push(T.pressPedal(pedalOf(target)));
   const head = intro ? T.startAt(zoneLabel(target)) : T.goTo(zoneLabel(target));
   return `<div class="banner" style="--z:var(--z-${target})"><b>${head}</b><span>${parts.join(' · ')}</span></div>`;
 }
@@ -1076,7 +1076,7 @@ function prev() {
 function readPage() { if (state.recipe) speak(pageSpeech(page())); }
 
 function goStation(i) {
-  if (port) send(`GOTO ${i}`);
+  if (port) send(`GOTO ${toPos(i)}`);
   else { state.at = i; render(); pingZone(i); }
 }
 function toggleLock() {
@@ -1089,6 +1089,7 @@ function toggleLock() {
 function renderToggles() {
   $('lockBtn').setAttribute('aria-pressed', state.locked);
   $('autoBtn').setAttribute('aria-pressed', state.autoRead);
+  $('mirrorBtn').setAttribute('aria-pressed', mirrored);
 }
 
 /* ---------- Recipe picker ---------- */
@@ -1131,12 +1132,10 @@ function renderLayoutEditor() {
   $('layoutPreview').innerHTML = stripHTML(null, { preview: true });
   const lastIdx = layout.order.length - 1;
   $('zoneList').innerHTML = layout.order.map((z, i) => {
-    const opts = [0, 1, 2].map(p => `<option value="${p}" ${layout.pedal[z] === p ? 'selected' : ''}>${T.pedalN(p + 1)}</option>`).join('')
-      + `<option value="-1" ${layout.pedal[z] === -1 ? 'selected' : ''}>${T.noPedal}</option>`;
     return `<li style="--z:var(--z-${z})">
       <span class="pos">${i + 1}</span><span class="zi">${ZONES[z].icon}</span>
       <span class="zt"><b>${esc(t(ZONES[z].name))}</b><small>${esc(t(ZONES[z].what))}</small></span>
-      <select data-pedal="${z}" aria-label="pedal">${opts}</select>
+      <span class="zped">🦶 ${T.pedalN(i)}</span>
       <button data-move="${z}" data-dir="-1" ${i === 0 ? 'disabled' : ''} title="${T.moveLeft}" aria-label="${T.moveLeft}">↑</button>
       <button data-move="${z}" data-dir="1" ${i === lastIdx ? 'disabled' : ''} title="${T.moveRight}" aria-label="${T.moveRight}">↓</button>
     </li>`;
@@ -1150,12 +1149,6 @@ $('zoneList').onclick = e => {
   [layout.order[i], layout.order[j]] = [layout.order[j], layout.order[i]];
   saveLayout();
 };
-$('zoneList').onchange = e => {
-  const s = e.target.closest('[data-pedal]');
-  if (!s) return;
-  layout.pedal[s.dataset.pedal] = +s.value;
-  saveLayout();
-};
 $('resetLayout').onclick = () => { layout = structuredClone(DEFAULT_LAYOUT); saveLayout(); };
 $('settingsBtn').onclick = () => $('settings').showModal();
 document.querySelectorAll('dialog').forEach(d => {
@@ -1167,9 +1160,7 @@ document.querySelectorAll('dialog').forEach(d => {
 $('strip').onclick = e => {
   const z = e.target.closest('[data-zone]')?.dataset.zone;
   if (!z) return;
-  const p = layout.pedal[z];
-  if (p < 0) { flash(T.noPedalThere); return; }
-  goStation(p);
+  goStation(pedalOf(z));
 };
 document.addEventListener('click', e => {
   const pg = e.target.closest('#progress [data-page]');
@@ -1207,12 +1198,12 @@ function refreshConn() {
 function handleLine(line) {
   log('← ' + line);
   const [cmd, a] = line.trim().split(/\s+/);
-  const i = parseInt(a, 10);
+  const i = toPos(parseInt(a, 10));   // station number from the Arduino → position on screen
   switch (cmd) {
     case 'READY': if (state.locked) send('LOCK'); break;
     case 'STATION':
       state.at = i; state.moving = true; render(); pingZone(i);
-      flash(T.turning(zonesAt(i).map(z => t(ZONES[z].name)).join(' / ') || T.pedalN(i + 1)));
+      flash(T.turning(zonesAt(i).map(z => t(ZONES[z].name)).join(' / ') || T.pedalN(i)));
       break;
     case 'ARRIVED': state.at = i; state.moving = false; render(); break;
     // The pedal that was pressed tells us where the person is standing (also while turning is locked)
@@ -1222,7 +1213,7 @@ function handleLine(line) {
     case 'LOCK': state.locked = a === '1'; renderToggles(); render(); break;
     case 'STATUS': {
       const f = line.match(/facing=(\d)/), l = line.match(/locked=(\d)/);
-      if (f) state.at = +f[1];
+      if (f) state.at = toPos(+f[1]);
       if (l && (l[1] === '1') !== state.locked) send(state.locked ? 'LOCK' : 'UNLOCK');
       state.moving = false;
       render();
@@ -1294,6 +1285,13 @@ if ('serial' in navigator) {
 
 $('connectBtn').onclick = () => (port ? disconnect() : connect());
 $('lockBtn').onclick = toggleLock;
+$('mirrorBtn').onclick = () => {
+  mirrored = !mirrored;
+  store.set('hfr.mirror', mirrored);
+  state.at = 2 - state.at;   // same physical pedal, now drawn on the other side
+  renderToggles();
+  render();
+};
 $('autoBtn').onclick = () => { state.autoRead = !state.autoRead; store.set('hfr.auto', state.autoRead); renderToggles(); };
 $('langBtn').onclick = () => setLang(lang === 'en' ? 'zh' : 'en');
 
