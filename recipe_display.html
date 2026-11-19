@@ -1,47 +1,57 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hands-Free Recipe</title>
 <style>
   :root {
     --bg: #f6f1e8;
     --surface: #fffdf8;
+    --counter: #ebe2d4;
     --ink: #2b2420;
     --muted: #7a6d63;
     --line: #e4d9c9;
     --accent: #c4552d;
-    --accent-soft: #f6dccf;
-    --ok: #3f7d4e;
+    --ok: #2f7d4a;
+    --warn: #b7791f;
     --mark: #fbe7a8;
     --mark-ink: #4a3a10;
+    --z-wash: #2f7bb0;
+    --z-prep: #4c8a35;
+    --z-cook: #cf4b25;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #1c1916;
       --surface: #26221e;
+      --counter: #302a24;
       --ink: #f1e9df;
       --muted: #a89a8c;
       --line: #3b342d;
       --accent: #ec7b4f;
-      --accent-soft: #4a2c1f;
-      --ok: #7cc28d;
+      --ok: #6cc28a;
+      --warn: #e5b04f;
       --mark: #5a4a1c;
       --mark-ink: #fbe7a8;
+      --z-wash: #5aa6dc;
+      --z-prep: #79b85e;
+      --z-cook: #ef7650;
     }
   }
   * { box-sizing: border-box; }
-  html, body { height: 100%; }
+  html, body { height: 100%; overflow: hidden; }
   body {
     margin: 0;
+    height: 100dvh;
     background: var(--bg);
     color: var(--ink);
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
     display: flex;
     flex-direction: column;
+    -webkit-text-size-adjust: 100%;
   }
-  button {
+  button, select {
     font: inherit;
     color: inherit;
     background: var(--surface);
@@ -50,721 +60,978 @@
     padding: 8px 16px;
     cursor: pointer;
   }
-  button:hover { border-color: var(--muted); }
+  button:hover:not(:disabled) { border-color: var(--muted); }
+  button:disabled { opacity: .4; cursor: default; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+  button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); border-color: var(--accent); }
+  mark { background: var(--mark); color: var(--mark-ink); border-radius: 5px; padding: 0 .2em; white-space: nowrap; }
 
+  /* ---------- Header ---------- */
   header {
+    flex: none;
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 10px 14px;
-    padding: 14px 24px;
+    gap: 8px 10px;
+    padding: 8px 20px;
+    padding-top: max(8px, env(safe-area-inset-top));
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .brand { font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+  .brand small { font-weight: 400; color: var(--muted); margin-left: 6px; }
+  @media (max-width: 1000px) { .brand small { display: none; } }
+  #recipeBtn { font-weight: 700; margin-right: auto; min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #recipeBtn::after { content: " ▾"; color: var(--muted); font-weight: 400; }
+  .icon-btn { padding: 8px 12px; white-space: nowrap; }
+  .conn { display: inline-flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); flex: none; }
+  .dot.on { background: var(--ok); }
+  .dot.err { background: var(--accent); }
+  .hint { flex: none; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); padding: 8px 20px; font-size: 14px; border-bottom: 1px solid var(--line); }
+  .hint:empty { display: none; }
+
+  /* ---------- Kitchen bar ---------- */
+  main { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .top {
+    flex: none;
+    padding: 4px 20px 8px;
     border-bottom: 1px solid var(--line);
   }
-  .brand { font-weight: 700; letter-spacing: .02em; margin-right: auto; }
-  .brand small { font-weight: 400; color: var(--muted); margin-left: 8px; }
-  #recipeBtn { font-weight: 600; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .conn { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
-  .dot.on { background: var(--ok); }
+  .top-inner { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 6px; }
 
-  .stations { display: flex; gap: 6px; }
-  .station {
-    padding: 6px 14px;
-    border-radius: 999px;
+  .strip { position: relative; }
+  .flags { position: relative; height: 22px; }
+  .counter {
+    display: grid;
+    grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+    background: var(--counter);
     border: 1px solid var(--line);
-    color: var(--muted);
-    font-size: 15px;
-    transition: background .2s, color .2s;
+    border-radius: 14px;
   }
-  .station.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .station.moving { animation: pulse 0.9s ease-in-out infinite; }
-  .station.ping { box-shadow: 0 0 0 4px var(--accent-soft); }
-  @keyframes pulse { 50% { opacity: .55; } }
+  .zone {
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background: color-mix(in srgb, var(--z) 13%, var(--surface));
+    padding: 5px 2px 4px;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    min-width: 0;
+    transition: background .2s, color .2s, box-shadow .2s;
+  }
+  .zone .zi { font-size: 22px; line-height: 1.1; }
+  .zone .zt { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+  .zone .zn { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .zone .zp { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .zone.here { border-color: color-mix(in srgb, var(--ink) 55%, transparent); border-style: dashed; }
+  .zone.target { background: var(--z); color: #fff; border: 2px solid var(--z); box-shadow: 0 0 0 4px color-mix(in srgb, var(--z) 30%, transparent); }
+  .zone.target .zp { color: rgba(255,255,255,.85); }
+  .zone.ping { animation: ping .6s ease-out; }
+  @keyframes ping { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }
+  div.zone { cursor: default; }
 
-  main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 4vh 6vw;
-    min-height: 0;
+  .goal, .you {
+    position: absolute;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 1px 10px;
+    transition: left .35s ease;
   }
-  .progress { display: flex; gap: 4px; margin-bottom: 3vh; }
-  .progress span { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
-  .progress span.done { background: var(--accent-soft); }
-  .progress span.now { background: var(--accent); }
-  .meta { display: flex; gap: 16px; align-items: baseline; color: var(--muted); font-size: clamp(16px, 1.8vw, 22px); margin-bottom: 2vh; }
-  .meta .count { color: var(--accent); font-weight: 700; }
-  #stepText {
-    font-size: clamp(28px, 4.4vw, 60px);
-    line-height: 1.35;
-    font-weight: 600;
-    margin: 0 0 3vh;
+  .goal { bottom: 1px; color: var(--z); }
+  .goal.arrived { color: var(--ok); }
+  .goal:not(.arrived) { animation: bob 1.2s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translate(-50%, -3px); } }
+  .track { position: relative; height: 28px; }
+  .you { top: 7px; background: var(--ink); color: var(--bg); }
+  .you.moving { animation: pulse .9s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .5; } }
+  .route { position: absolute; top: 3px; height: 3px; background: var(--accent); border-radius: 2px; transition: left .35s, width .35s; }
+  .route::after { content: ""; position: absolute; top: -5px; border: 6.5px solid transparent; }
+  .route.right::after { right: -8px; border-left: 9px solid var(--accent); border-right: 0; }
+  .route.left::after { left: -8px; border-right: 9px solid var(--accent); border-left: 0; }
+
+  .banner {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px;
+    padding: 7px 14px;
+    border-radius: 12px;
+    font-size: clamp(16px, 2vw, 20px);
+    background: color-mix(in srgb, var(--z, var(--accent)) 14%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--z, var(--accent)) 45%, transparent);
+  }
+  .banner b { color: var(--z, var(--accent)); }
+  .banner span { color: var(--muted); font-size: .82em; }
+  .banner.ok { --z: var(--ok); }
+
+  .progress { display: flex; }
+  .progress button {
+    flex: 1; height: 7px; padding: 0; border: none; border-radius: 3px; margin-left: 1px;
+    background: color-mix(in srgb, var(--z, var(--muted)) 22%, transparent);
+  }
+  .progress button.gap { margin-left: 5px; }
+  .progress button:first-child { margin-left: 0; }
+  .progress button.done { background: color-mix(in srgb, var(--z, var(--muted)) 60%, transparent); }
+  .progress button.now { background: var(--z, var(--ink)); outline: 2px solid var(--z, var(--ink)); outline-offset: 1px; }
+
+
+  /* ---------- One page = one screen, never scrolls ---------- */
+  .body {
+    flex: 1; min-height: 0;
+    width: 100%; max-width: 1000px;
+    margin: 0 auto;
+    padding: 12px 20px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .card {
+    --fs: 1;
+    flex: 1; min-height: 0;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 1em 1.2em;
+    font-size: calc(var(--fs) * clamp(17px, 2.3vw, 26px));
+    display: flex; flex-direction: column;
+  }
+  .step { border-top: 8px solid var(--z); }
+  .step-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: .72em; }
+  .zone-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--z); color: #fff;
+    border-radius: 999px; padding: 3px 12px; font-weight: 700;
+    text-transform: capitalize;
+  }
+  .count { color: var(--muted); font-weight: 600; }
+  .subdots { display: inline-flex; gap: 5px; margin-left: auto; }
+  .subdots i { width: 10px; height: 10px; border-radius: 50%; background: color-mix(in srgb, var(--z) 25%, transparent); }
+  .subdots i.on { background: var(--z); }
+  .step-title { display: flex; align-items: center; gap: .5em; margin: .55em 0 0; font-size: 1em; font-weight: 700; color: var(--muted); }
+  .verb {
+    flex: none; min-width: 1.8em; height: 1.8em; padding: 0 .35em;
+    display: grid; place-items: center; border-radius: 10px;
+    background: color-mix(in srgb, var(--z) 16%, var(--surface)); color: var(--z);
+  }
+  html[lang="en"] .verb { font-size: .7em; text-transform: uppercase; letter-spacing: .04em; }
+  .instr {
+    flex: 1;
+    display: flex; align-items: center;
+    font-size: 1.75em; font-weight: 700; line-height: 1.3;
+    margin: .3em 0;
     text-wrap: pretty;
   }
-  #stepText.title { font-size: clamp(36px, 5.5vw, 76px); }
-  mark { background: var(--mark); color: var(--mark-ink); border-radius: 6px; padding: 0 .2em; }
-  .paras p { font-size: clamp(18px, 1.9vw, 26px); line-height: 1.6; color: var(--muted); margin: 0 0 1em; max-width: 60em; }
-  ul.items {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    font-size: clamp(20px, 2.2vw, 30px);
-    line-height: 1.5;
-    columns: 2 18em;
-    column-gap: 3em;
+  .section-label { font-size: .62em; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 0 0 .4em; }
+  .uses { display: flex; flex-wrap: wrap; gap: .35em; margin-bottom: .3em; }
+  .chip {
+    font-size: .8em; padding: .2em .7em; border-radius: 999px;
+    background: color-mix(in srgb, var(--z, var(--accent)) 10%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--z, var(--accent)) 40%, transparent);
   }
-  ul.items li { break-inside: avoid; padding: 4px 0 4px 1.1em; position: relative; }
-  ul.items li::before { content: ""; position: absolute; left: 0; top: .75em; width: .4em; height: .4em; border-radius: 50%; background: var(--accent); }
-  ul.items.notes { columns: 1; color: var(--muted); }
+  .callout {
+    display: flex; gap: .5em; align-items: flex-start;
+    border-radius: 12px; padding: .5em .7em; margin-top: .4em;
+    font-size: .85em; line-height: 1.4;
+  }
+  .callout .ic { font-weight: 800; flex: none; }
+  .callout.done { background: color-mix(in srgb, var(--ok) 12%, var(--surface)); }
+  .callout.done .ic, .callout.done b { color: var(--ok); }
+  .callout.warn { background: color-mix(in srgb, var(--warn) 14%, var(--surface)); }
+  .callout.warn .ic, .callout.warn b { color: var(--warn); }
 
-  .photos { display: flex; gap: 12px; margin-top: 2vh; overflow-x: auto; }
-  .photos img { height: min(28vh, 260px); border-radius: 12px; border: 1px solid var(--line); }
+  .next-line {
+    flex: none;
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 8px 14px; border-radius: 12px;
+    background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--z, var(--ok));
+    font-size: 15px; min-width: 0;
+  }
+  .next-line .nl { flex: none; color: var(--muted); font-weight: 700; font-size: 13px; }
+  .next-line .nz { flex: none; color: var(--z); font-weight: 700; }
+  .next-line .nt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* overview pages */
+  .kicker { color: var(--muted); font-weight: 600; margin: 0 0 .3em; font-size: .75em; }
+  .ov-title { font-size: 2em; margin: 0 0 .3em; line-height: 1.15; }
+  .intro { font-size: .9em; line-height: 1.5; color: var(--muted); margin: 0 0 .8em; }
+  .ing { list-style: none; padding: 0; margin: .2em 0 0; columns: 2 13em; column-gap: 1.4em; }
+  .ing li { break-inside: avoid; display: flex; justify-content: space-between; gap: .6em; padding: .35em 0; border-bottom: 1px dashed var(--line); font-size: .95em; }
+  .ing li span:last-child { color: var(--muted); text-align: right; }
+  .tools { font-size: .8em; line-height: 1.5; margin: 0 0 .8em; }
+  .route-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .route-chips .rc {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 7px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    background: color-mix(in srgb, var(--z) 16%, var(--surface)); color: var(--z);
+  }
+  .route-chips .arr { color: var(--muted); font-size: 12px; }
+  .card .route-chips .rc { font-size: .7em; }
+
+  /* ---------- Footer controls ---------- */
+  footer {
+    flex: none;
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+    padding: 8px 20px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .controls { max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
+  .controls button { font-size: 17px; font-weight: 700; padding: 10px 18px; }
+  #prevBtn { justify-self: start; }
+  #nextBtn { justify-self: end; }
+  .legend { max-width: 960px; margin: 6px auto 0; text-align: center; font-size: 13px; color: var(--muted); }
+  .legend b { color: var(--ink); }
+  .reading { color: var(--accent); font-weight: 700; animation: pulse 1.4s ease-in-out infinite; }
 
   .flash {
-    position: fixed;
-    left: 50%;
-    top: 22%;
+    position: fixed; left: 50%; top: 40%;
     transform: translateX(-50%);
-    background: var(--ink);
-    color: var(--bg);
-    padding: 14px 28px;
-    border-radius: 16px;
-    font-size: clamp(20px, 2.4vw, 32px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .25s;
+    background: var(--ink); color: var(--bg);
+    padding: 14px 28px; border-radius: 16px;
+    font-size: clamp(20px, 2.4vw, 30px);
+    opacity: 0; pointer-events: none; transition: opacity .25s;
+    z-index: 50; max-width: 90vw; text-align: center;
   }
-  .flash.show { opacity: .92; }
+  .flash.show { opacity: .94; }
 
-  footer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 22px;
-    align-items: center;
-    padding: 12px 24px;
-    border-top: 1px solid var(--line);
-    color: var(--muted);
-    font-size: 15px;
-  }
-  footer b { color: var(--ink); }
-  footer .spacer { flex: 1; }
-  details { font-size: 13px; }
-  details pre { max-height: 160px; overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin: 6px 0 0; white-space: pre-wrap; }
-
+  /* ---------- Dialogs (these may scroll; they are used by hand) ---------- */
   dialog {
-    width: min(720px, 92vw);
-    height: min(80vh, 760px);
+    width: min(680px, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px);
     border: 1px solid var(--line);
     border-radius: 18px;
     background: var(--surface);
     color: var(--ink);
     padding: 0;
   }
-  dialog::backdrop { background: rgba(0,0,0,.35); }
-  .dlg { display: flex; flex-direction: column; height: 100%; }
-  .dlg-head { padding: 16px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
-  .dlg-head input {
-    font: inherit; font-size: 18px; padding: 10px 14px; border-radius: 12px;
-    border: 1px solid var(--line); background: var(--bg); color: var(--ink);
-  }
-  .cats { display: flex; flex-wrap: wrap; gap: 6px; }
-  .cats button { padding: 4px 12px; font-size: 14px; }
-  #recipeList { flex: 1; overflow: auto; padding: 8px; }
-  #recipeList button {
-    display: flex; justify-content: space-between; width: 100%; text-align: left;
-    border: none; border-radius: 10px; padding: 10px 12px; background: transparent; font-size: 17px;
-  }
-  #recipeList button:hover, #recipeList button:focus { background: var(--accent-soft); outline: none; }
-  #recipeList small { color: var(--muted); }
+  dialog::backdrop { background: rgba(0,0,0,.4); }
+  .dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); z-index: 2; }
+  .dlg-head h2 { margin: 0; font-size: 20px; }
+  .dlg-body { padding: 16px 18px 22px; }
+  .dlg-body h3 { font-size: 15px; margin: 22px 0 8px; }
+  .dlg-body h3:first-child { margin-top: 0; }
+  .dlg-body .note { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 6px 0 0; }
 
+  .recipe-cards { display: grid; gap: 10px; }
+  .recipe-card { display: block; width: 100%; text-align: left; border-radius: 14px; padding: 14px 16px; }
+  .recipe-card.current { border-color: var(--accent); border-width: 2px; }
+  .recipe-card .rn { font-size: 20px; font-weight: 700; }
+  .recipe-card .rm { color: var(--muted); font-size: 14px; margin: 2px 0 8px; }
+
+  .layout-types { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .layout-types label {
+    position: relative;
+    border: 1px solid var(--line); border-radius: 12px; padding: 10px 6px 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; text-align: center;
+    cursor: pointer;
+  }
+  .layout-types label:has(input:checked) { border-color: var(--accent); border-width: 2px; background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+  .layout-types label:has(input:disabled) { opacity: .45; cursor: default; }
+  .layout-types input { position: absolute; opacity: 0; pointer-events: none; }
+  .layout-types small { font-weight: 400; color: var(--muted); font-size: 12px; }
+  .layout-types svg { width: 54px; height: 38px; }
+  .layout-types svg rect { fill: var(--counter); stroke: var(--muted); stroke-width: 1.5; }
+
+  #layoutPreview { margin: 4px 0 10px; }
+  .zone-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .zone-list li {
+    display: grid; grid-template-columns: 28px 30px minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center;
+    padding: 8px 10px; border-radius: 12px;
+    background: color-mix(in srgb, var(--z) 10%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--z) 35%, transparent);
+  }
+  .zone-list .pos { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--z); color: #fff; font-weight: 700; font-size: 14px; }
+  .zone-list .zi { font-size: 22px; }
+  .zone-list .zt b { display: block; text-transform: capitalize; }
+  .zone-list .zt small { color: var(--muted); }
+  .zone-list select { border-radius: 10px; padding: 6px 8px; font-size: 14px; }
+  .zone-list button { border-radius: 10px; padding: 6px 10px; }
+  .toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+  details.log { margin-top: 18px; font-size: 13px; }
+  details.log pre { max-height: 180px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin: 6px 0 0; white-space: pre-wrap; }
+
+  /* ---------- Phone ---------- */
   @media (max-width: 640px) {
-    header { padding: 12px 16px; }
-    main { padding: 3vh 16px; }
-    footer { padding: 10px 16px; }
-    #recipeBtn { max-width: 70vw; }
+    header { padding: 6px 12px; padding-top: max(6px, env(safe-area-inset-top)); }
+    .brand, .wide-only, #connText { display: none; }
+    #connectBtn::after { content: "USB"; font-size: 14px; }
+    .icon-btn { padding: 7px 10px; }
+    .top { padding: 2px 12px 6px; }
+    .zone { flex-direction: column; gap: 0; padding: 4px 1px 3px; }
+    .zone .zt { align-items: center; }
+    .zone .zi { font-size: 18px; }
+    .zone .zn { font-size: 13px; }
+    .zone .zp { font-size: 10px; }
+    .goal, .you { font-size: 12px; padding: 1px 8px; }
+    .banner { padding: 6px 12px; font-size: 15px; }
+    .body { padding: 8px 12px; gap: 6px; }
+    .card { padding: .8em .9em; border-radius: 14px; }
+    .next-line { font-size: 14px; padding: 6px 12px; }
+    footer { padding: 6px 12px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+    .controls button { font-size: 16px; padding: 10px 14px; }
+    .legend { display: none; }
+    .layout-types { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .zone-list li { grid-template-columns: 26px 26px minmax(0, 1fr) auto auto; }
+    .zone-list li select { grid-column: 3 / -1; grid-row: 2; justify-self: start; }
   }
-</style>
-<style>
-  .conn.err { color: var(--accent); font-weight: 600; }
-  .dot.err { background: var(--accent); }
-  .hint { color: var(--accent); font-size: 14px; flex-basis: 100%; text-align: right; }
-  .hint:empty { display: none; }
-  .reading { margin-left: auto; color: var(--accent); font-weight: 600; animation: pulse 1.4s ease-in-out infinite; }
-  .reading[hidden] { display: none; }
-  #stepText { max-width: 22em; }
-  #stepText mark { white-space: nowrap; }
-  .tip { font-size: clamp(16px, 1.6vw, 20px); color: var(--muted); }
-  /* Long pages scroll inside main instead of spilling under the header and footer */
-  main { overflow-y: auto; justify-content: safe center; }
-  #stepText.title.long { font-size: clamp(30px, 3.8vw, 56px); }
-  ul.items.many { font-size: clamp(16px, 1.6vw, 22px); columns: 3 14em; line-height: 1.4; }
-  .needs { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 2vh; }
-  .needs:empty { display: none; }
-  .needs .label { color: var(--muted); font-size: clamp(15px, 1.4vw, 19px); text-transform: uppercase; letter-spacing: .06em; margin-right: 4px; }
-  .chip {
-    font-size: clamp(18px, 2vw, 28px);
-    padding: 4px 14px;
-    border-radius: 999px;
-    background: var(--accent-soft);
-    border: 1px solid var(--accent);
-  }
-</style>
-<style>
-  body { font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
-  #langBtn { font-weight: 600; min-width: 5em; }
-  /* Photos sit beside the text and are shown whole (never cropped) */
-  .content { display: flex; gap: 4vw; align-items: flex-start; }
-  .text { flex: 1; min-width: 0; }
-  .photos { flex: 0 0 auto; flex-direction: column; margin-top: 0; overflow: visible; }
-  .photos:empty { display: none; }
-  .photos img {
-    width: auto; height: auto;
-    max-width: min(32vw, 440px);
-    max-height: 52vh;
-    object-fit: contain;
-  }
-  .photos img + img { max-height: 25vh; }
-  @media (max-width: 900px) {
-    .content { flex-direction: column; }
-    .photos { flex-direction: row; flex-wrap: wrap; }
-    .photos img { max-width: 100%; max-height: 32vh; }
-  }
+  @media (max-height: 560px) { .legend { display: none; } }
 </style>
 </head>
 <body>
 <header>
   <div class="brand">Hands-Free Recipe<small data-i18n="tagline"></small></div>
-  <button id="recipeBtn" data-i18n="pick" data-i18n-title="pickTitle"></button>
-  <div class="stations" id="stations"></div>
-  <button id="lockBtn" aria-pressed="false" data-i18n="lock" data-i18n-title="lockTitle"></button>
-  <button id="autoBtn" aria-pressed="false" data-i18n="auto" data-i18n-title="autoTitle"></button>
-  <button id="langBtn" title="中文 / English"></button>
-  <span class="conn" id="conn"><span class="dot" id="connDot"></span><span id="connText"></span></span>
-  <button id="connectBtn" class="primary"></button>
-  <div class="hint" id="hint"></div>
+  <button id="recipeBtn" data-i18n-title="pickTitle"></button>
+  <button id="langBtn" class="icon-btn" title="中文 / English"></button>
+  <button id="settingsBtn" class="icon-btn" data-i18n-title="settingsTitle">⚙<span class="wide-only" data-i18n="settings"></span></button>
+  <button id="connectBtn" class="icon-btn conn"><span class="dot" id="connDot"></span><span id="connText"></span></button>
 </header>
+<div class="hint" id="hint"></div>
 
-<main>
-  <div class="progress" id="progress"></div>
-  <div class="meta"><span class="count" id="count"></span><span id="group"></span><span class="reading" id="reading" data-i18n="reading" hidden></span></div>
-  <div class="content">
-    <div class="text">
-      <h1 id="stepText" class="title"></h1>
-      <div class="needs" id="needs"></div>
-      <div class="paras" id="paras"></div>
-      <ul class="items" id="items"></ul>
+<main id="main">
+  <div class="top">
+    <div class="top-inner">
+      <div id="strip"></div>
+      <div id="banner"></div>
+      <div class="progress" id="progress"></div>
     </div>
-    <div class="photos" id="photos"></div>
   </div>
+  <div class="body" id="body"></div>
 </main>
+
+<footer>
+  <div class="controls">
+    <button id="prevBtn"></button>
+    <button id="readBtn"></button>
+    <button id="nextBtn" class="primary"></button>
+  </div>
+  <div class="legend" id="legend"></div>
+</footer>
 
 <div class="flash" id="flash"></div>
 
-<footer>
-  <span data-i18n-html="fTap"></span>
-  <span data-i18n-html="fDouble"></span>
-  <span data-i18n-html="fHold"></span>
-  <span data-i18n-html="fStop"></span>
-  <span data-i18n="fKeys"></span>
-  <span class="spacer"></span>
-  <details>
-    <summary data-i18n="log"></summary>
-    <pre id="log"></pre>
-  </details>
-  <span data-i18n="source"></span>
-</footer>
-
 <dialog id="picker">
-  <div class="dlg">
-    <div class="dlg-head">
-      <input id="search" type="search" autocomplete="off">
-      <div class="cats" id="cats"></div>
+  <div class="dlg-head"><h2 data-i18n="pick"></h2><button data-close aria-label="Close">✕</button></div>
+  <div class="dlg-body"><div class="recipe-cards" id="recipeCards"></div></div>
+</dialog>
+
+<dialog id="settings">
+  <div class="dlg-head"><h2 data-i18n="settingsTitle"></h2><button data-close aria-label="Close">✕</button></div>
+  <div class="dlg-body">
+    <h3 data-i18n="layoutType"></h3>
+    <div class="layout-types" id="layoutTypes"></div>
+
+    <h3 data-i18n="zoneOrder"></h3>
+    <div id="layoutPreview"></div>
+    <ol class="zone-list" id="zoneList"></ol>
+    <p class="note" data-i18n="pedalNote"></p>
+    <p style="margin:10px 0 0"><button id="resetLayout" data-i18n="resetLayout"></button></p>
+
+    <h3 data-i18n="options"></h3>
+    <div class="toggles">
+      <button id="lockBtn" aria-pressed="false" data-i18n="lock"></button>
+      <button id="autoBtn" aria-pressed="false" data-i18n="auto"></button>
     </div>
-    <div id="recipeList"></div>
+    <p class="note" data-i18n="optionsNote"></p>
+
+    <details class="log">
+      <summary data-i18n="log"></summary>
+      <pre id="log"></pre>
+    </details>
   </div>
 </dialog>
 
 <script>
+const L = (zh, en) => ({ zh, en });
+
 /* ---------- Interface text ---------- */
 const I18N = {
-  en: {
-    tagline: 'foot-pedal cookbook', pick: 'Choose a recipe', pickTitle: 'Choose a recipe (/)',
-    lock: 'Lock turning', lockTitle: 'Keep the screen still; every pedal controls the recipe (L)',
-    auto: 'Auto read', autoTitle: 'Read each step aloud after turning the page (A)',
-    connected: 'Connected', notConnected: 'Not connected', failed: 'Connection failed',
-    connect: 'Connect Arduino', disconnect: 'Disconnect',
-    busy: 'The port is busy. Close the Arduino IDE Serial Monitor (and other tabs using it), then click Connect again.',
-    noSerial: 'This browser has no Web Serial. Open this page in Chrome or Edge (not Safari).',
-    noPort: 'No port chosen. If the list was empty, check the USB cable and that the Arduino driver is installed.',
-    reading: '🔊 Reading · tap to stop', start: 'Choose a dish to start',
-    fTap: '<b>Tap</b> next step', fDouble: '<b>Double tap</b> previous step',
-    fHold: '<b>Hold</b> read aloud from the start', fStop: '<b>Tap while reading</b> stop',
-    fKeys: 'Keyboard: → ← Space · 1/2/3 turn', log: 'Serial log', source: 'Recipes from TheMealDB',
-    search: 'Search dishes, e.g. chicken', nothing: 'Nothing found', loadingList: 'Loading…',
-    stations: ['Sink', 'Counter', 'Stove'],
-    stepCount: (n, t) => `Step ${n} of ${t}`, ready: 'Get ready', calc: 'Amounts',
-    ingredientsN: n => `${n} ingredients`, need: 'You need',
-    loading: name => `Loading ${name || 'recipe'}…`,
-    loadFail: 'Could not load the recipe. Check the internet connection and try again.',
-    chooseFirst: 'Choose a dish first', last: 'This is the last step', first: 'This is the first page',
-    next: 'Next →', prev: '← Back', readFlash: '🔊 Reading', stopped: '⏸ Stopped · hold to read again',
-    noSpeech: 'This browser cannot read aloud', turning: name => `Turning to ${name}`,
-    locked: 'Turning locked', unlocked: 'Turning unlocked',
-  },
   zh: {
     tagline: '脚踏菜谱', pick: '选择菜谱', pickTitle: '选择菜谱 (/)',
-    lock: '锁定转向', lockTitle: '锁定后屏幕不再转动，三个按钮都直接控制菜谱 (L)',
-    auto: '自动朗读', autoTitle: '翻页后自动朗读 (A)',
-    connected: '已连接', notConnected: '未连接', failed: '连接失败',
-    connect: '连接 Arduino', disconnect: '断开',
+    settings: ' 厨房设置', settingsTitle: '厨房布局与设置',
+    layoutType: '厨房布局', zoneOrder: '区域顺序（从左到右，最上面 = 最左边）',
+    pedalNote: '踏板 1 / 2 / 3 对应 Arduino 的 D2 / D3 / D4，默认每个区域一个踏板。',
+    resetLayout: '恢复默认顺序', options: '操作',
+    optionsNote: '锁定转向：屏幕不动，任何踏板都直接翻页。自动朗读：翻页后自动读出这一页。',
+    lock: '锁定转向', auto: '自动朗读',
+    layouts: { line: ['长条形', '一字形台面'], l: ['L 形', '即将支持'], galley: ['双排', '即将支持'], island: ['岛台', '即将支持'] },
+    moveLeft: '往左移', moveRight: '往右移', pedalN: n => `踏板 ${n}`, noPedal: '无踏板',
+    connected: '已连接', notConnected: '连接 Arduino', failed: '连接失败', disconnect: '断开',
     busy: '串口被占用：请关闭 Arduino IDE 的串口监视器（以及其他打开本页的标签），再点连接。',
-    noSerial: '这个浏览器不支持网页串口，请用 Chrome 或 Edge 打开（不要用 Safari）。',
+    noSerial: '这个浏览器不支持网页串口，请用电脑上的 Chrome 或 Edge 打开。手机上可以点厨房条上的区域来模拟“走到这里”。',
     noPort: '没有选择端口。如果列表是空的，请检查 USB 线和 Arduino 驱动。',
-    reading: '🔊 朗读中 · 单击停止', start: '选择一道菜开始',
-    fTap: '<b>单击</b> 下一步', fDouble: '<b>双击</b> 上一步',
-    fHold: '<b>长按</b> 从头朗读', fStop: '<b>朗读时单击</b> 停止',
-    fKeys: '键盘：→ ← 空格 · 1/2/3 转向', log: '串口日志', source: '菜谱来自 HowToCook（Unlicense）',
-    search: '搜索菜名，例如 西红柿', nothing: '没有找到', loadingList: '加载中…',
-    stations: ['水槽', '备菜台', '灶台'],
-    stepCount: (n, t) => `第 ${n} / ${t} 步`, ready: '准备', calc: '用量',
-    ingredientsN: n => `${n} 种原料和工具`, need: '需要',
-    loading: name => `正在加载 ${name || '菜谱'}…`,
-    loadFail: '菜谱加载失败，请检查网络后重试',
-    chooseFirst: '先选择一道菜', last: '已经是最后一步', first: '已经是第一页',
-    next: '下一步 →', prev: '← 上一步', readFlash: '🔊 朗读', stopped: '⏸ 已停止 · 长按重新朗读',
-    noSpeech: '这个浏览器不支持朗读', turning: name => `转向${name}`,
-    locked: '已锁定转向', unlocked: '已解除锁定',
+    youHere: '你在这', goHere: '去这里 ▾', arrivedHere: '✓ 就是这',
+    goTo: z => `→ 走到 ${z}`, youAreAt: z => `✓ 你在 ${z}`,
+    startAt: z => `从 ${z} 开始`, startSub: '踩一下踏板翻页',
+    steps: n => (n > 0 ? `往右 ${n} 格` : `往左 ${-n} 格`),
+    pressPedal: n => `到了踩 ${n} 号踏板`,
+    noPedalThere: '这个区域没有踏板',
+    turningScreen: '屏幕正在转过来…', lockedNote: '已锁定转向',
+    stepOf: (n, t) => `第 ${n} / ${t} 步`, stepN: n => `第 ${n} 步`, ready: '准备', stepsN: n => `共 ${n} 步`,
+    serves: n => `${n} 人份`, minutes: n => `约 ${n} 分钟`,
+    ingredients: '食材', tools: '工具', route: '移动路线', uses: '用到',
+    doneLook: '做好的样子', careful: '注意',
+    then: '接下来', nextStep: '下一步', goNext: z => `→ 去 ${z}`, finish: '做完这一页就可以上桌了',
+    prev: '← 上一页', next: '下一页 →', read: '🔊 朗读', stop: '■ 停止',
+    legend: '脚踏：<b>单击</b> 下一页 · <b>双击</b> 上一页 · <b>长按</b> 朗读 ｜ 键盘：→ ← 空格 · 1/2/3 走到踏板',
+    last: '已经是最后一页', first: '已经是第一页', stopped: '⏸ 已停止 · 长按重新朗读',
+    noSpeech: '这个浏览器不支持朗读', turning: z => `屏幕转向 ${z}`,
+    locked: '已锁定转向', unlocked: '已解除锁定', log: '串口日志',
+  },
+  en: {
+    tagline: 'foot-pedal cookbook', pick: 'Choose a recipe', pickTitle: 'Choose a recipe (/)',
+    settings: ' Kitchen', settingsTitle: 'Kitchen layout & settings',
+    layoutType: 'Kitchen layout', zoneOrder: 'Zone order (left to right — top of the list is the far left)',
+    pedalNote: 'Pedals 1 / 2 / 3 are Arduino pins D2 / D3 / D4. By default each zone has its own pedal.',
+    resetLayout: 'Reset to default', options: 'Options',
+    optionsNote: 'Lock turning: the screen stays still and every pedal turns the page. Auto read: each page is read aloud after it turns.',
+    lock: 'Lock turning', auto: 'Auto read',
+    layouts: { line: ['Straight', 'One-wall counter'], l: ['L-shape', 'Coming soon'], galley: ['Galley', 'Coming soon'], island: ['Island', 'Coming soon'] },
+    moveLeft: 'Move left', moveRight: 'Move right', pedalN: n => `Pedal ${n}`, noPedal: 'No pedal',
+    connected: 'Connected', notConnected: 'Connect Arduino', failed: 'Connection failed', disconnect: 'Disconnect',
+    busy: 'The port is busy. Close the Arduino IDE Serial Monitor (and other tabs using it), then click Connect again.',
+    noSerial: 'This browser has no Web Serial. Use Chrome or Edge on a computer. On a phone, tap a zone on the kitchen strip to pretend you walked there.',
+    noPort: 'No port chosen. If the list was empty, check the USB cable and the Arduino driver.',
+    youHere: 'You', goHere: 'Go here ▾', arrivedHere: '✓ Here',
+    goTo: z => `→ Go to the ${z}`, youAreAt: z => `✓ You're at the ${z}`,
+    startAt: z => `Start at the ${z}`, startSub: 'tap a pedal to turn the page',
+    steps: n => (n > 0 ? `${n} to the right` : `${-n} to the left`),
+    pressPedal: n => `then tap pedal ${n}`,
+    noPedalThere: 'That zone has no pedal',
+    turningScreen: 'Screen is turning…', lockedNote: 'Turning locked',
+    stepOf: (n, t) => `Step ${n} of ${t}`, stepN: n => `Step ${n}`, ready: 'Get ready', stepsN: n => `${n} steps`,
+    serves: n => `Serves ${n}`, minutes: n => `about ${n} min`,
+    ingredients: 'Ingredients', tools: 'Tools', route: 'Your route', uses: 'You need',
+    doneLook: 'Done when', careful: 'Careful',
+    then: 'Then', nextStep: 'Next step', goNext: z => `→ go to the ${z}`, finish: 'Finish this page and it is ready to serve',
+    prev: '← Back', next: 'Next →', read: '🔊 Read', stop: '■ Stop',
+    legend: 'Pedal: <b>tap</b> next · <b>double tap</b> back · <b>hold</b> read aloud ｜ Keys: → ← Space · 1/2/3 walk to pedal',
+    last: 'This is the last page', first: 'This is the first page', stopped: '⏸ Stopped · hold to read again',
+    noSpeech: 'This browser cannot read aloud', turning: z => `Screen turning to the ${z}`,
+    locked: 'Turning locked', unlocked: 'Turning unlocked', log: 'Serial log',
   },
 };
+
+/* ---------- Kitchen zones (cutting and prep share one counter) ---------- */
+const ZONES = {
+  wash: { icon: '💧', name: L('洗菜区', 'sink'), short: L('水槽', 'Sink'), what: L('洗、泡、沥水', 'Wash, soak, drain') },
+  prep: { icon: '🔪', name: L('切配区', 'prep counter'), short: L('切菜备菜', 'Prep'), what: L('砧板：削、切、打蛋、调汁、摆料', 'Board: peel, cut, mix, line up') },
+  cook: { icon: '🔥', name: L('灶台', 'stove'), short: L('灶台', 'Stove'), what: L('烧水、炒、煮', 'Boil, fry, simmer') },
+};
+const ZONE_IDS = Object.keys(ZONES);
+const DEFAULT_LAYOUT = { type: 'line', order: ['wash', 'prep', 'cook'], pedal: { wash: 0, prep: 1, cook: 2 } };
+
+/* ---------- Recipes ----------
+   One step = one zone. Each line in `how` becomes its own page, so the screen never needs scrolling.
+*/
+const RECIPES = [
+  {
+    id: 'tomato-egg',
+    name: L('西红柿炒鸡蛋', 'Tomato & Egg Stir-fry'),
+    serves: 2, minutes: 20,
+    intro: L('鸡蛋先炒嫩盛出，番茄炒出汁，再把鸡蛋放回去。',
+             'Scramble the eggs soft and set aside, cook the tomatoes into a sauce, then bring the eggs back.'),
+    ingredients: [
+      [L('番茄', 'Tomatoes'), L('2 个（约 400 g）', '2 (about 400 g)')],
+      [L('鸡蛋', 'Eggs'), L('3 个', '3')],
+      [L('小葱', 'Scallion'), L('1 根', '1 stalk')],
+      [L('食用油', 'Cooking oil'), L('2 大勺', '2 tbsp')],
+      [L('盐', 'Salt'), L('1/2 小勺', '½ tsp')],
+      [L('白糖', 'Sugar'), L('1 小勺', '1 tsp')],
+    ],
+    tools: L('砧板、刀、2 个碗、小碟、筷子、炒锅、锅铲、盘子', 'Board, knife, 2 bowls, small dish, chopsticks, wok, spatula, plate'),
+    steps: [
+      { zone: 'wash', verb: L('洗', 'Wash'), title: L('洗番茄和小葱', 'Rinse tomatoes and scallion'),
+        uses: [L('番茄 2 个', '2 tomatoes'), L('小葱 1 根', '1 scallion')],
+        how: [L('番茄放在流水下，用手搓洗 10 秒', 'Rub each tomato under running water for 10 seconds'),
+              L('小葱去掉黄叶和根须，冲干净', 'Pull off yellow leaves and roots, rinse the scallion'),
+              L('甩干水，拿到砧板旁', 'Shake off the water, carry them to the board')],
+        done: L('表面没有泥沙', 'No grit left') },
+      { zone: 'prep', verb: L('切', 'Cut'), title: L('番茄切块', 'Cut the tomatoes'),
+        uses: [L('番茄 2 个', '2 tomatoes'), L('碗 A', 'Bowl A')],
+        how: [L('切掉番茄顶上的蒂', 'Cut out the stem end'),
+              L('对半切开，切面朝下放稳', 'Halve, lay cut side down so it won\'t roll'),
+              L('每半切成 6 块，约 2 cm', 'Cut each half into 6 wedges, about 2 cm'),
+              L('连汁一起装进碗 A', 'Put them, juice and all, into bowl A')],
+        done: L('块的大小差不多', 'Pieces about the same size') },
+      { zone: 'prep', verb: L('切', 'Slice'), title: L('切葱花', 'Slice the scallion'),
+        uses: [L('小葱 1 根', '1 scallion'), L('小碟', 'Small dish')],
+        how: [L('葱白和葱绿切开', 'Cut the white part from the green'),
+              L('葱绿切成 5 mm 葱花，放进小碟', 'Slice the green into 5 mm rings, onto the small dish')],
+        done: L('葱花一粒粒分开', 'Rings are separate') },
+      { zone: 'prep', verb: L('打', 'Beat'), title: L('打鸡蛋', 'Beat the eggs'),
+        uses: [L('鸡蛋 3 个', '3 eggs'), L('盐 一小撮', 'Salt, a pinch'), L('碗 B', 'Bowl B')],
+        how: [L('3 个鸡蛋磕进碗 B，挑出蛋壳', 'Crack 3 eggs into bowl B, fish out any shell'),
+              L('加一小撮盐（约 1 g）', 'Add a pinch of salt (about 1 g)'),
+              L('筷子朝一个方向快速打 30 秒', 'Beat fast in one direction for 30 seconds')],
+        done: L('起细泡，看不到透明蛋清', 'Small bubbles, no clear egg white left') },
+      { zone: 'prep', verb: L('摆', 'Set'), title: L('按下锅顺序摆好', 'Line up in cooking order'),
+        uses: [L('盐 2 g', 'Salt 2 g'), L('糖 5 g', 'Sugar 5 g'), L('空盘子', 'Empty plate')],
+        how: [L('盐 2 g 和糖 5 g 放进同一个小碟', 'Put 2 g salt and 5 g sugar together in a small dish'),
+              L('端到灶台边：蛋液 → 空盘子 → 番茄 → 盐糖 → 葱花', 'To the stove: egg → empty plate → tomato → salt & sugar → scallion')],
+        done: L('开火以后不用再离开灶台', 'Once the heat is on, you won\'t need to leave the stove') },
+      { zone: 'cook', verb: L('炒', 'Fry'), title: L('炒鸡蛋', 'Scramble the eggs'),
+        uses: [L('油 1.5 大勺', 'Oil 1½ tbsp'), L('蛋液', 'Egg')],
+        how: [L('中大火烧热锅，倒油 1.5 大勺', 'Medium-high heat, add 1½ tbsp oil'),
+              L('油微微冒烟时倒入蛋液', 'When the oil just starts to smoke, pour in the egg'),
+              L('边缘鼓起后，从外往里推成大块', 'When the edges puff, push from edge to center in big curds'),
+              L('表面还有点湿就盛到盘子里', 'Move to the plate while the top is still a bit wet')],
+        done: L('嫩黄大块，底部微微金黄', 'Big soft curds, light gold underneath'),
+        warn: L('别炒老，鸡蛋还要回锅', 'Don\'t overcook — the eggs go back in later') },
+      { zone: 'cook', verb: L('炒', 'Cook'), title: L('番茄炒出汁', 'Cook down the tomatoes'),
+        uses: [L('油 2 小勺', 'Oil 2 tsp'), L('番茄', 'Tomato')],
+        how: [L('锅里补 2 小勺油，转中火', 'Add 2 tsp oil, turn to medium'),
+              L('倒入番茄，用锅铲压一压帮它出汁', 'Add the tomato, press with the spatula'),
+              L('太干就加 2 大勺清水', 'If it looks dry, add 2 tbsp water')],
+        done: L('番茄软塌，有红色汤汁', 'Soft tomatoes, red sauce in the pan') },
+      { zone: 'cook', verb: L('调', 'Season'), title: L('调味', 'Season'),
+        uses: [L('盐 2 g', 'Salt 2 g'), L('糖 5 g', 'Sugar 5 g')],
+        how: [L('倒入盐和糖，翻炒 20 秒', 'Add the salt and sugar, stir 20 seconds'),
+              L('尝一下，淡了再加一点盐', 'Taste; add a little salt if bland')],
+        done: L('酸甜带咸', 'Sweet, sour and salty') },
+      { zone: 'cook', verb: L('合', 'Mix'), title: L('鸡蛋回锅，出锅', 'Eggs back in, serve'),
+        uses: [L('鸡蛋', 'Eggs'), L('葱花', 'Scallion')],
+        how: [L('鸡蛋倒回锅里，轻轻翻 30 秒', 'Slide the eggs back in, fold gently 30 seconds'),
+              L('撒葱花，关火，盛盘', 'Add scallion, turn off heat, plate')],
+        done: L('鸡蛋裹满汤汁', 'Eggs coated in sauce') },
+    ],
+  },
+  {
+    id: 'garlic-broccoli',
+    name: L('蒜蓉西兰花', 'Garlic Broccoli'),
+    serves: 2, minutes: 25,
+    intro: L('先焯水再快炒，保持翠绿脆口。烧水和泡的时候可以去做别的步骤。',
+             'Blanch, then a quick stir-fry keeps it green and crisp. While the water heats and the broccoli soaks, do other steps.'),
+    ingredients: [
+      [L('西兰花', 'Broccoli'), L('1 颗（约 350 g）', '1 head (about 350 g)')],
+      [L('大蒜', 'Garlic'), L('4 瓣', '4 cloves')],
+      [L('蚝油', 'Oyster sauce'), L('1 大勺', '1 tbsp')],
+      [L('盐', 'Salt'), L('1 小勺 + 少许', '1 tsp + a pinch')],
+      [L('食用油', 'Cooking oil'), L('1 大勺', '1 tbsp')],
+      [L('清水', 'Water'), L('约 1 L', 'about 1 L')],
+    ],
+    tools: L('锅、大盆、滤网、砧板、刀、2 个小碗、锅铲、盘子', 'Pot, large bowl, colander, board, knife, 2 small bowls, spatula, plate'),
+    steps: [
+      { zone: 'cook', verb: L('烧', 'Boil'), title: L('先烧水', 'Put water on'),
+        uses: [L('清水 1 L', 'Water 1 L')],
+        how: [L('锅里加约 1 L 水，盖上锅盖，开大火', 'About 1 L water in the pot, lid on, high heat'),
+              L('不用等，直接去做下一步', 'Don\'t wait — go on to the next step')],
+        done: L('回来时水正好开了', 'It will be boiling when you come back') },
+      { zone: 'prep', verb: L('切', 'Cut'), title: L('切小朵', 'Cut into florets'),
+        uses: [L('西兰花 1 颗', '1 head broccoli')],
+        how: [L('西兰花倒过来，沿主茎把小朵切下', 'Upside down, cut each floret off the stem'),
+              L('大朵再对半切，一口大小', 'Halve the big ones to bite size'),
+              L('粗茎削皮，切 5 mm 薄片（可选）', 'Peel the thick stem, slice 5 mm (optional)')],
+        done: L('大小差不多', 'All about the same size') },
+      { zone: 'wash', verb: L('泡', 'Soak'), title: L('盐水泡 10 分钟', 'Soak 10 minutes in salt water'),
+        uses: [L('盐 1 小勺', 'Salt 1 tsp'), L('大盆', 'Large bowl')],
+        how: [L('小朵放进大盆，加水没过，加 1 小勺盐', 'Florets in the bowl, cover with water, add 1 tsp salt'),
+              L('泡 10 分钟，泡的时候去做下一步', 'Leave it for 10 minutes — do the next step meanwhile')] },
+      { zone: 'prep', verb: L('剁', 'Mince'), title: L('蒜切末', 'Mince the garlic'),
+        uses: [L('大蒜 4 瓣', '4 garlic cloves'), L('小碗', 'Small bowl')],
+        how: [L('刀面拍一下蒜瓣，剥掉皮', 'Smash each clove with the knife, peel'),
+              L('先切片，再剁成米粒大小，装小碗', 'Slice, then chop to rice-grain size, into a small bowl')],
+        done: L('没有大块', 'No big pieces') },
+      { zone: 'prep', verb: L('调', 'Mix'), title: L('调酱汁', 'Mix the sauce'),
+        uses: [L('蚝油 1 大勺', 'Oyster sauce 1 tbsp'), L('清水 2 大勺', 'Water 2 tbsp')],
+        how: [L('小碗里：蚝油 1 大勺 + 清水 2 大勺 + 一小撮盐，搅匀', 'Small bowl: 1 tbsp oyster sauce + 2 tbsp water + a pinch of salt, stir'),
+              L('酱汁和蒜末端到灶台边', 'Take the sauce and garlic to the stove')] },
+      { zone: 'wash', verb: L('冲', 'Rinse'), title: L('冲洗沥干', 'Rinse and drain'),
+        uses: [L('滤网', 'Colander')],
+        how: [L('泡好的西兰花在流水下冲一遍', 'Rinse the soaked broccoli under running water'),
+              L('倒进滤网沥水，端去灶台', 'Drain in the colander, take it to the stove')],
+        done: L('冲洗的水是清的', 'Rinse water runs clear') },
+      { zone: 'cook', verb: L('焯', 'Blanch'), title: L('焯水 1 分钟', 'Blanch 1 minute'),
+        uses: [L('西兰花', 'Broccoli'), L('油 几滴', 'Oil, a few drops')],
+        how: [L('水开后加几滴油和一小撮盐', 'Once boiling, add a few drops of oil and a pinch of salt'),
+              L('放入西兰花，煮 60 秒', 'Add the broccoli, cook 60 seconds'),
+              L('时间到立刻捞出', 'Scoop out the moment time is up')],
+        done: L('变成鲜亮的翠绿', 'Bright green'),
+        warn: L('煮过头会发黄变软', 'Overcooked turns yellow and mushy') },
+      { zone: 'wash', verb: L('凉', 'Cool'), title: L('过冷水', 'Cool down'),
+        uses: [L('滤网', 'Colander')],
+        how: [L('倒进滤网，冷水冲 10 秒', 'Into the colander, cold water for 10 seconds'),
+              L('用力抖几下，尽量沥干', 'Shake hard to drain well')],
+        warn: L('水太多下锅会溅油', 'Wet broccoli spatters in hot oil') },
+      { zone: 'cook', verb: L('爆', 'Fry'), title: L('炒香蒜末', 'Fry the garlic'),
+        uses: [L('油 1 大勺', 'Oil 1 tbsp'), L('蒜末', 'Garlic')],
+        how: [L('倒掉锅里的水擦干，中小火倒油 1 大勺', 'Empty and dry the pan, medium-low, 1 tbsp oil'),
+              L('下蒜末，不停翻炒 20 秒', 'Add the garlic, stir constantly 20 seconds')],
+        done: L('蒜香出来，微微发黄', 'Fragrant, just turning gold'),
+        warn: L('变金黄就进入下一页，炒糊会苦', 'Move on once golden — burnt garlic is bitter') },
+      { zone: 'cook', verb: L('翻', 'Toss'), title: L('翻炒出锅', 'Toss and serve'),
+        uses: [L('西兰花', 'Broccoli'), L('酱汁', 'Sauce')],
+        how: [L('大火，倒入西兰花翻炒 30 秒', 'High heat, add broccoli, toss 30 seconds'),
+              L('沿锅边倒入酱汁，再翻 30 秒，出锅', 'Pour sauce around the edge, toss 30 more seconds, plate')],
+        done: L('每朵都亮亮的', 'Every floret glossy') },
+    ],
+  },
+  {
+    id: 'hot-sour-potato',
+    name: L('酸辣土豆丝', 'Hot & Sour Shredded Potato'),
+    serves: 2, minutes: 30,
+    intro: L('土豆丝泡掉淀粉，大火快炒，出锅还是脆的。刀工最花时间，慢慢切。',
+             'Rinse off the starch and stir-fry fast and hot to keep it crunchy. The knife work takes longest — go slow.'),
+    ingredients: [
+      [L('土豆', 'Potatoes'), L('2 个', '2 medium')],
+      [L('青椒', 'Green pepper'), L('半个', '½')],
+      [L('干辣椒', 'Dried chilies'), L('3 个', '3')],
+      [L('大蒜', 'Garlic'), L('2 瓣', '2 cloves')],
+      [L('醋', 'Vinegar'), L('2 大勺', '2 tbsp')],
+      [L('盐', 'Salt'), L('1/2 小勺', '½ tsp')],
+      [L('食用油', 'Cooking oil'), L('1.5 大勺', '1½ tbsp')],
+      [L('花椒（可选）', 'Sichuan pepper (opt.)'), L('10 粒', '10')],
+    ],
+    tools: L('削皮刀、砧板、刀、大碗、滤网、小碗、炒锅、锅铲', 'Peeler, board, knife, large bowl, colander, small bowl, wok, spatula'),
+    steps: [
+      { zone: 'wash', verb: L('洗', 'Wash'), title: L('洗土豆和青椒', 'Scrub potatoes and pepper'),
+        uses: [L('土豆 2 个', '2 potatoes'), L('青椒 半个', '½ pepper')],
+        how: [L('土豆在流水下刷掉泥，青椒冲干净', 'Scrub the potatoes, rinse the pepper'),
+              L('大碗接满清水，一起拿到砧板旁', 'Fill the large bowl with water, bring it to the board')],
+        done: L('没有泥', 'No dirt left') },
+      { zone: 'prep', verb: L('削', 'Peel'), title: L('削皮', 'Peel'),
+        uses: [L('削皮刀', 'Peeler')],
+        how: [L('从上往下削，转着削一圈', 'Peel top to bottom, turning as you go'),
+              L('挖掉芽眼和发绿的地方', 'Dig out eyes and green patches')],
+        warn: L('发绿发芽的部分有毒，一定去掉', 'Green or sprouting parts are toxic — remove them') },
+      { zone: 'prep', verb: L('切', 'Shred'), title: L('切丝', 'Cut into matchsticks'),
+        uses: [L('土豆', 'Potatoes'), L('清水碗', 'Bowl of water')],
+        how: [L('先切下一薄片，让土豆平放不滚', 'Slice a thin piece off so it sits flat'),
+              L('切成 2 mm 厚的薄片', 'Slice 2 mm thick'),
+              L('几片错开叠好，切成 2 mm 细丝', 'Fan out a few slices, cut 2 mm strips'),
+              L('切好马上泡进清水', 'Drop them straight into the water')],
+        warn: L('慢慢切，手指弯起来抵住刀面', 'Go slow, curl your fingers against the blade') },
+      { zone: 'wash', verb: L('洗', 'Rinse'), title: L('洗掉淀粉', 'Rinse off the starch'),
+        uses: [L('土豆丝', 'Potato strips'), L('滤网', 'Colander')],
+        how: [L('抓洗土豆丝，水浑了就换水，换 2–3 次', 'Swish the strips, change cloudy water 2–3 times'),
+              L('再泡 5 分钟', 'Soak 5 more minutes'),
+              L('倒进滤网沥干', 'Drain in the colander')],
+        done: L('水清，土豆丝不黏', 'Clear water, strips not sticky') },
+      { zone: 'prep', verb: L('切', 'Cut'), title: L('切配料', 'Cut the aromatics'),
+        uses: [L('青椒', 'Pepper'), L('大蒜 2 瓣', '2 garlic'), L('干辣椒 3 个', '3 chilies')],
+        how: [L('青椒去籽切细丝', 'Seed the pepper, cut thin strips'),
+              L('蒜切片，干辣椒剪成 1 cm 段', 'Slice the garlic, snip chilies into 1 cm pieces')] },
+      { zone: 'prep', verb: L('调', 'Mix'), title: L('调醋汁', 'Mix vinegar sauce'),
+        uses: [L('醋 2 大勺', 'Vinegar 2 tbsp'), L('盐 1/2 小勺', 'Salt ½ tsp')],
+        how: [L('小碗：醋 2 大勺 + 盐 1/2 小勺，搅到化开', 'Small bowl: 2 tbsp vinegar + ½ tsp salt, stir to dissolve'),
+              L('端到灶台：花椒辣椒蒜 → 土豆丝 → 青椒 → 醋汁', 'To the stove: spices → potato → pepper → vinegar')] },
+      { zone: 'cook', verb: L('爆', 'Sizzle'), title: L('爆香', 'Sizzle the spices'),
+        uses: [L('油 1.5 大勺', 'Oil 1½ tbsp')],
+        how: [L('锅烧热，倒油 1.5 大勺', 'Heat the wok, add 1½ tbsp oil'),
+              L('下花椒、干辣椒、蒜片，炒 10 秒', 'Add peppercorns, chilies, garlic — 10 seconds')],
+        warn: L('辣椒发黑就糊了', 'Black chilies are burnt') },
+      { zone: 'cook', verb: L('炒', 'Fry'), title: L('大火快炒', 'Stir-fry on high'),
+        uses: [L('土豆丝', 'Potato')],
+        how: [L('转大火，倒入沥干的土豆丝', 'High heat, add the drained potato'),
+              L('不停翻炒 90 秒', 'Toss non-stop for 90 seconds')],
+        done: L('半透明，还是脆的', 'Translucent but still crunchy') },
+      { zone: 'cook', verb: L('淋', 'Finish'), title: L('加醋出锅', 'Vinegar and serve'),
+        uses: [L('青椒丝', 'Pepper'), L('醋汁', 'Vinegar')],
+        how: [L('放入青椒丝，翻炒 20 秒', 'Add the pepper, toss 20 seconds'),
+              L('沿锅边淋醋汁，翻匀，出锅', 'Pour vinegar around the hot rim, toss, plate')],
+        done: L('醋香明显', 'Clear vinegar aroma') },
+    ],
+  },
+];
 
 /* ---------- State ---------- */
 const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
 };
-let lang = store.get('hfr.lang') === 'zh' ? 'zh' : 'en';
+let lang = store.get('hfr.lang') === 'en' ? 'en' : 'zh';
 let T = I18N[lang];
-const state = {
-  recipe: null,       // { id, title, pages }
-  page: 0,
-  facing: 1,
-  moving: false,
-  locked: false,
-  autoRead: false,
-};
-
+const t = o => (o && typeof o === 'object' ? (o[lang] ?? o.zh) : o);
 const $ = id => document.getElementById(id);
 
-/* ---------- English recipes: TheMealDB ---------- */
-const API = 'https://www.themealdb.com/api/json/v1/1/';
-async function api(path) {
-  const res = await fetch(API + path);
-  if (!res.ok) throw new Error(res.status);
-  return res.json();
-}
-
-// Instructions come in mixed formats: "step 1" headers, "1. ..." lists, or one long paragraph.
-// Every page gets one short action: sentences are packed only while they stay under STEP_MAX characters.
-const STEP_MAX = 110;
-function splitSteps(text) {
-  const lines = text.replace(/\r/g, '').split('\n')
-    .map(l => l.trim())
-    .filter(l => l && !/^(step\s*)?\d+[.):]?$/i.test(l))
-    .map(l => l.replace(/^(step\s*\d+\s*[-.:)]?\s*|\d+[.)]\s+|[-•▢*]\s*)/i, '').trim())
-    .filter(Boolean);
-  const steps = [];
-  for (const line of lines) {
-    const parts = line.split(/(?<=[.!?])\s+(?=[A-Z(])/)
-      .flatMap(s => s.length > STEP_MAX ? s.split(/;\s+|,\s+(?=then\b)/i) : [s]);
-    let cur = '';
-    for (const s of parts.map(x => x.trim()).filter(Boolean)) {
-      if (cur && cur.length + s.length + 1 > STEP_MAX) { steps.push(cur); cur = s; }
-      else cur = cur ? cur + ' ' + s : s;
-    }
-    if (cur) steps.push(cur);
+function loadLayout() {
+  const s = store.get('hfr.layout3');
+  if (!s || !Array.isArray(s.order) || s.order.length !== ZONE_IDS.length || !ZONE_IDS.every(z => s.order.includes(z))) {
+    return structuredClone(DEFAULT_LAYOUT);
   }
-  return steps.map(s => s.charAt(0).toUpperCase() + s.slice(1));
+  const pedal = {};
+  for (const z of ZONE_IDS) pedal[z] = [0, 1, 2, -1].includes(s.pedal?.[z]) ? s.pedal[z] : DEFAULT_LAYOUT.pedal[z];
+  return { type: 'line', order: s.order, pedal };
 }
+let layout = loadLayout();
+function saveLayout() { store.set('hfr.layout3', layout); render(); renderLayoutEditor(); }
 
-// Which ingredients does a step use?
-const norm = s => s.toLowerCase().replace(/chilli/g, 'chili').replace(/[^a-z\s]/g, ' ');
-const stem = w => w.replace(/ies$/, 'i').replace(/y$/, 'i').replace(/(o|s|x|ch|sh)es$/, '$1').replace(/([^s])s$/, '$1');
-const wordsOf = s => norm(s).split(/\s+/).filter(Boolean).map(stem);
-
-function ingredientsForStep(text, ingredients) {
-  const words = new Set(wordsOf(text));
-  // 1. every word of the ingredient name appears in the step ("chili powder")
-  const full = ingredients.filter(g => g.words.length && g.words.every(w => words.has(w)));
-  const used = new Set(full.flatMap(g => g.words));
-  // 2. only the main noun appears ("the onion" for "Red Onions"), unless a more exact match already used that word
-  //    (so "chilli powder" does not also pull in "Green Chilli")
-  const loose = ingredients.filter(g => !full.includes(g) && words.has(g.head) && !used.has(g.head));
-  return [...new Set([...full, ...loose].map(g => g.label))];
-}
-
-function parseMeal(m) {
-  const items = [];
-  const ingredients = [];
-  for (let i = 1; i <= 20; i++) {
-    const ing = (m['strIngredient' + i] || '').trim();
-    const qty = (m['strMeasure' + i] || '').trim();
-    if (!ing) continue;
-    const label = qty ? `${qty} ${ing}` : ing;
-    items.push(label);
-    const words = wordsOf(ing);
-    ingredients.push({ label, words, head: words[words.length - 1] });
-  }
-  const tags = [m.strArea, m.strCategory].filter(x => x && x !== 'Unknown' && x !== 'None');
-  const pages = [{
-    type: 'overview', text: m.strMeal,
-    paras: tags.length ? [tags.join(' · ')] : [], items,
-    imgs: m.strMealThumb ? [m.strMealThumb + '/medium'] : [],
-  }];
-  const steps = splitSteps(m.strInstructions || '');
-  steps.forEach((text, i) => pages.push({
-    type: 'step', group: '', text, notes: [], imgs: [], n: i + 1, total: steps.length,
-    needs: ingredientsForStep(text, ingredients),
-  }));
-  return { id: m.idMeal, title: m.strMeal, pages };
-}
-
-const MealDB = {
-  defaultId: '52772',   // Teriyaki Chicken Casserole
-  defaultCat: 'Chicken',
-  async categories() {
-    return ((await api('list.php?c=list')).meals || []).map(c => ({ key: c.strCategory, label: c.strCategory }));
-  },
-  async list(cat) {
-    return ((await api('filter.php?c=' + encodeURIComponent(cat))).meals || [])
-      .map(m => ({ id: m.idMeal, name: m.strMeal, sub: cat }));
-  },
-  async search(q) {
-    return ((await api('search.php?s=' + encodeURIComponent(q))).meals || [])
-      .map(m => ({ id: m.idMeal, name: m.strMeal, sub: m.strArea || m.strCategory }));
-  },
-  async load(id) {
-    let meal = store.get('hfr.en.meal.' + id);
-    if (!meal) {
-      const data = await api('lookup.php?i=' + encodeURIComponent(id));
-      meal = data.meals && data.meals[0];
-      if (!meal) throw new Error('not found');
-      store.set('hfr.en.meal.' + id, meal);
-    }
-    return parseMeal(meal);
-  },
+const state = {
+  recipe: null,
+  page: 0,
+  at: 1,          // pedal last used = where the person stands (firmware starts facing pedal 2 / index 1)
+  moving: false,
+  locked: false,
+  autoRead: !!store.get('hfr.auto'),
 };
 
-/* ---------- Chinese recipes: HowToCook (Anduin2017/HowToCook, dishes/) ---------- */
-const RECIPES = [["dishes/vegetable_dish/上汤娃娃菜/上汤娃娃菜.md","上汤娃娃菜","vegetable_dish"],["dishes/vegetable_dish/乾隆白菜/乾隆白菜.md","乾隆白菜","vegetable_dish"],["dishes/vegetable_dish/凉拌木耳/凉拌木耳.md","凉拌木耳","vegetable_dish"],["dishes/vegetable_dish/凉拌油麦菜.md","凉拌油麦菜","vegetable_dish"],["dishes/vegetable_dish/凉拌莴笋/凉拌莴笋.md","凉拌莴笋","vegetable_dish"],["dishes/vegetable_dish/凉拌豆腐.md","凉拌豆腐","vegetable_dish"],["dishes/vegetable_dish/凉拌金针菇.md","凉拌金针菇","vegetable_dish"],["dishes/vegetable_dish/凉拌黄瓜.md","凉拌黄瓜","vegetable_dish"],["dishes/vegetable_dish/包菜炒鸡蛋粉丝/包菜炒鸡蛋粉丝.md","包菜炒鸡蛋粉丝","vegetable_dish"],["dishes/vegetable_dish/印度土豆花菜.md","印度土豆花菜","vegetable_dish"],["dishes/vegetable_dish/印度葫芦丸子.md","印度葫芦丸子","vegetable_dish"],["dishes/vegetable_dish/地三鲜/地三鲜.md","地三鲜","vegetable_dish"],["dishes/vegetable_dish/家常日本豆腐.md","家常日本豆腐","vegetable_dish"],["dishes/vegetable_dish/小炒藕丁/小炒藕丁.md","小炒藕丁","vegetable_dish"],["dishes/vegetable_dish/干锅花菜/干锅花菜.md","干锅花菜","vegetable_dish"],["dishes/vegetable_dish/鸡蛋羹/微波炉鸡蛋羹.md","微波炉鸡蛋羹","vegetable_dish"],["dishes/vegetable_dish/手撕包菜/手撕包菜.md","手撕包菜","vegetable_dish"],["dishes/vegetable_dish/拔丝土豆/拔丝土豆.md","拔丝土豆","vegetable_dish"],["dishes/vegetable_dish/松仁玉米.md","松仁玉米","vegetable_dish"],["dishes/vegetable_dish/椒盐玉米/椒盐玉米.md","椒盐玉米","vegetable_dish"],["dishes/vegetable_dish/榄菜肉末四季豆/榄菜肉末四季豆.md","榄菜肉末四季豆","vegetable_dish"],["dishes/vegetable_dish/水油焖蔬菜.md","水油焖蔬菜","vegetable_dish"],["dishes/vegetable_dish/油醋爆蛋.md","油醋爆蛋","vegetable_dish"],["dishes/vegetable_dish/洋葱炒鸡蛋/洋葱炒鸡蛋.md","洋葱炒鸡蛋","vegetable_dish"],["dishes/vegetable_dish/清炒花菜.md","清炒花菜","vegetable_dish"],["dishes/vegetable_dish/清蒸南瓜.md","清蒸南瓜","vegetable_dish"],["dishes/vegetable_dish/炒土豆和胡萝卜蒸菜.md","炒土豆和胡萝卜蒸菜","vegetable_dish"],["dishes/vegetable_dish/炒滑蛋/炒滑蛋.md","炒滑蛋","vegetable_dish"],["dishes/vegetable_dish/炒茄子.md","炒茄子","vegetable_dish"],["dishes/vegetable_dish/炒青菜.md","炒青菜","vegetable_dish"],["dishes/vegetable_dish/炸洋葱花/炸洋葱花.md","炸洋葱花","vegetable_dish"],["dishes/vegetable_dish/烤茄子/烤茄子.md","烤茄子","vegetable_dish"],["dishes/vegetable_dish/白灼菜心/白灼菜心.md","白灼菜心","vegetable_dish"],["dishes/vegetable_dish/皮蛋豆腐.md","皮蛋豆腐","vegetable_dish"],["dishes/vegetable_dish/糖拌西红柿/糖拌西红柿.md","糖拌西红柿","vegetable_dish"],["dishes/vegetable_dish/素炒豆角.md","素炒豆角","vegetable_dish"],["dishes/vegetable_dish/红烧冬瓜/红烧冬瓜.md","红烧冬瓜","vegetable_dish"],["dishes/vegetable_dish/红烧茄子.md","红烧茄子","vegetable_dish"],["dishes/vegetable_dish/脆皮豆腐.md","脆皮豆腐","vegetable_dish"],["dishes/vegetable_dish/芹菜拌茶树菇/芹菜拌茶树菇.md","芹菜拌茶树菇","vegetable_dish"],["dishes/vegetable_dish/茄子炖土豆.md","茄子炖土豆","vegetable_dish"],["dishes/vegetable_dish/莴笋叶煎饼/莴笋叶煎饼.md","莴笋叶煎饼","vegetable_dish"],["dishes/vegetable_dish/菠菜炒鸡蛋/菠菜炒鸡蛋.md","菠菜炒鸡蛋","vegetable_dish"],["dishes/vegetable_dish/葱煎豆腐.md","葱煎豆腐","vegetable_dish"],["dishes/vegetable_dish/蒜蓉炒芹菜/蒜蓉炒芹菜.md","蒜蓉炒芹菜","vegetable_dish"],["dishes/vegetable_dish/蒜蓉空心菜/蒜蓉空心菜.md","蒜蓉空心菜","vegetable_dish"],["dishes/vegetable_dish/蒜蓉西兰花.md","蒜蓉西兰花","vegetable_dish"],["dishes/vegetable_dish/蒲烧茄子.md","蒲烧茄子","vegetable_dish"],["dishes/vegetable_dish/鸡蛋羹/蒸箱鸡蛋羹.md","蒸箱鸡蛋羹","vegetable_dish"],["dishes/vegetable_dish/虎皮青椒/虎皮青椒.md","虎皮青椒","vegetable_dish"],["dishes/vegetable_dish/蚝油三鲜菇/蚝油三鲜菇.md","蚝油三鲜菇","vegetable_dish"],["dishes/vegetable_dish/蚝油生菜.md","蚝油生菜","vegetable_dish"],["dishes/vegetable_dish/西红柿炒鸡蛋.md","西红柿炒鸡蛋","vegetable_dish"],["dishes/vegetable_dish/西红柿豆腐汤羹/西红柿豆腐汤羹.md","西红柿豆腐汤羹","vegetable_dish"],["dishes/vegetable_dish/西葫芦炒鸡蛋/西葫芦炒鸡蛋.md","西葫芦炒鸡蛋","vegetable_dish"],["dishes/vegetable_dish/话梅煮毛豆/话梅煮毛豆.md","话梅煮毛豆","vegetable_dish"],["dishes/vegetable_dish/酸辣土豆丝.md","酸辣土豆丝","vegetable_dish"],["dishes/vegetable_dish/金针菇日本豆腐煲.md","金针菇日本豆腐煲","vegetable_dish"],["dishes/vegetable_dish/金钱蛋.md","金钱蛋","vegetable_dish"],["dishes/vegetable_dish/陕北熬豆角.md","陕北熬豆角","vegetable_dish"],["dishes/vegetable_dish/雷椒皮蛋.md","雷椒皮蛋","vegetable_dish"],["dishes/vegetable_dish/韭菜炒蛋/韭菜炒蛋.md","韭菜炒蛋","vegetable_dish"],["dishes/vegetable_dish/鸡蛋火腿炒黄瓜.md","鸡蛋火腿炒黄瓜","vegetable_dish"],["dishes/vegetable_dish/鸡蛋羹/鸡蛋羹.md","鸡蛋羹","vegetable_dish"],["dishes/vegetable_dish/鸡蛋花/鸡蛋花.md","鸡蛋花","vegetable_dish"],["dishes/meat_dish/乡村啤酒鸭.md","乡村啤酒鸭","meat_dish"],["dishes/meat_dish/农家一碗香/农家一碗香.md","农家一碗香","meat_dish"],["dishes/meat_dish/冬瓜桑拿鸡.md","冬瓜桑拿鸡","meat_dish"],["dishes/meat_dish/冬瓜酿肉/冬瓜酿肉.md","冬瓜酿肉","meat_dish"],["dishes/meat_dish/冷吃兔.md","冷吃兔","meat_dish"],["dishes/meat_dish/凉拌鸡丝/凉拌鸡丝.md","凉拌鸡丝","meat_dish"],["dishes/meat_dish/红烧肉/南派红烧肉.md","南派红烧肉","meat_dish"],["dishes/meat_dish/卤菜/卤菜.md","卤菜","meat_dish"],["dishes/meat_dish/口水鸡/口水鸡.md","口水鸡","meat_dish"],["dishes/meat_dish/可乐鸡翅.md","可乐鸡翅","meat_dish"],["dishes/meat_dish/台式卤肉饭/台式卤肉饭.md","台式卤肉饭","meat_dish"],["dishes/meat_dish/咕噜肉.md","咕噜肉","meat_dish"],["dishes/meat_dish/咖喱肥牛/咖喱肥牛.md","咖喱肥牛","meat_dish"],["dishes/meat_dish/商芝肉.md","商芝肉","meat_dish"],["dishes/meat_dish/啤酒鸭/啤酒鸭.md","啤酒鸭","meat_dish"],["dishes/meat_dish/回锅肉/回锅肉.md","回锅肉","meat_dish"],["dishes/meat_dish/土豆炖排骨/土豆炖排骨.md","土豆炖排骨","meat_dish"],["dishes/meat_dish/奥尔良风味烤鸡腿/奥尔良风味烤鸡腿.md","奥尔良风味烤鸡腿","meat_dish"],["dishes/meat_dish/奶酪培根通心粉/奶酪培根通心粉.md","奶酪培根通心粉","meat_dish"],["dishes/meat_dish/姜炒鸡/姜炒鸡.md","姜炒鸡","meat_dish"],["dishes/meat_dish/姜葱捞鸡/姜葱捞鸡.md","姜葱捞鸡","meat_dish"],["dishes/meat_dish/孜然牛肉.md","孜然牛肉","meat_dish"],["dishes/meat_dish/宫保鸡丁/宫保鸡丁.md","宫保鸡丁","meat_dish"],["dishes/meat_dish/小炒肉.md","小炒肉","meat_dish"],["dishes/meat_dish/小炒鸡肝/小炒鸡肝.md","小炒鸡肝","meat_dish"],["dishes/meat_dish/小炒黄牛肉/小炒黄牛肉.md","小炒黄牛肉","meat_dish"],["dishes/meat_dish/小米辣炒肉.md","小米辣炒肉","meat_dish"],["dishes/meat_dish/小酥肉.md","小酥肉","meat_dish"],["dishes/meat_dish/尖叫牛蛙/尖叫牛蛙.md","尖叫牛蛙","meat_dish"],["dishes/meat_dish/尖椒炒牛肉.md","尖椒炒牛肉","meat_dish"],["dishes/meat_dish/山西过油肉.md","山西过油肉","meat_dish"],["dishes/meat_dish/巴基斯坦牛肉咖喱/巴基斯坦牛肉咖喱.md","巴基斯坦牛肉咖喱","meat_dish"],["dishes/meat_dish/带把肘子.md","带把肘子","meat_dish"],["dishes/meat_dish/干煸仔鸡/干煸仔鸡.md","干煸仔鸡","meat_dish"],["dishes/meat_dish/广式萝卜牛腩/广式萝卜牛腩.md","广式萝卜牛腩","meat_dish"],["dishes/meat_dish/徽派红烧肉/徽派红烧肉.md","徽派红烧肉","meat_dish"],["dishes/meat_dish/意式烤鸡.md","意式烤鸡","meat_dish"],["dishes/meat_dish/新疆大盘鸡/新疆大盘鸡.md","新疆大盘鸡","meat_dish"],["dishes/meat_dish/无骨鸡爪/无骨鸡爪.md","无骨鸡爪","meat_dish"],["dishes/meat_dish/杀猪菜.md","杀猪菜","meat_dish"],["dishes/meat_dish/枝竹羊腩煲/枝竹羊腩煲.md","枝竹羊腩煲","meat_dish"],["dishes/meat_dish/柱候牛腩/柱候牛腩.md","柱候牛腩","meat_dish"],["dishes/meat_dish/桂林十八酿/桂林十八酿.md","桂林十八酿","meat_dish"],["dishes/meat_dish/梅菜扣肉/梅菜扣肉.md","梅菜扣肉","meat_dish"],["dishes/meat_dish/椒盐排条.md","椒盐排条","meat_dish"],["dishes/meat_dish/水煮牛肉/水煮牛肉.md","水煮牛肉","meat_dish"],["dishes/meat_dish/水煮肉片.md","水煮肉片","meat_dish"],["dishes/meat_dish/洋葱炒猪肉.md","洋葱炒猪肉","meat_dish"],["dishes/meat_dish/淄博烧烤/淄博烧烤.md","淄博烧烤","meat_dish"],["dishes/meat_dish/清蒸鳜鱼/清蒸鳜鱼.md","清蒸鳜鱼","meat_dish"],["dishes/meat_dish/湖南家常红烧肉/湖南家常红烧肉.md","湖南家常红烧肉","meat_dish"],["dishes/meat_dish/湘祁米夫鸭/湘祁米夫鸭.md","湘祁米夫鸭","meat_dish"],["dishes/meat_dish/澳门湿版免治牛肉饭/澳门湿版免治牛肉饭.md","澳门湿版免治牛肉饭","meat_dish"],["dishes/meat_dish/烤鸡翅.md","烤鸡翅","meat_dish"],["dishes/meat_dish/煎烤羊排/煎烤羊排.md","煎烤羊排","meat_dish"],["dishes/meat_dish/牛排/牛排.md","牛排","meat_dish"],["dishes/meat_dish/猪皮冻/猪皮冻.md","猪皮冻","meat_dish"],["dishes/meat_dish/猪肉烩酸菜.md","猪肉烩酸菜","meat_dish"],["dishes/meat_dish/甜辣烤全翅.md","甜辣烤全翅","meat_dish"],["dishes/meat_dish/田螺酿/田螺酿.md","田螺酿","meat_dish"],["dishes/meat_dish/番茄红酱.md","番茄红酱","meat_dish"],["dishes/meat_dish/瘦肉土豆片/瘦肉土豆片.md","瘦肉土豆片","meat_dish"],["dishes/meat_dish/白菜猪肉炖粉条.md","白菜猪肉炖粉条","meat_dish"],["dishes/meat_dish/空气炸锅脆皮现腌炸鸡/空气炸锅脆皮现腌炸鸡.md","空气炸锅脆皮现腌炸鸡","meat_dish"],["dishes/meat_dish/红烧肉/简易红烧肉.md","简易红烧肉","meat_dish"],["dishes/meat_dish/粉蒸肉.md","粉蒸肉","meat_dish"],["dishes/meat_dish/糖醋排骨/糖醋排骨.md","糖醋排骨","meat_dish"],["dishes/meat_dish/糖醋里脊.md","糖醋里脊","meat_dish"],["dishes/meat_dish/红烧猪蹄/红烧猪蹄.md","红烧猪蹄","meat_dish"],["dishes/meat_dish/红烧鸡翅.md","红烧鸡翅","meat_dish"],["dishes/meat_dish/羊排焖面/羊排焖面.md","羊排焖面","meat_dish"],["dishes/meat_dish/老妈蹄花/老妈蹄花.md","老妈蹄花","meat_dish"],["dishes/meat_dish/老式锅包肉/老式锅包肉.md","老式锅包肉","meat_dish"],["dishes/meat_dish/肉饼炖蛋.md","肉饼炖蛋","meat_dish"],["dishes/meat_dish/腐乳肉.md","腐乳肉","meat_dish"],["dishes/meat_dish/芥末罗氏虾/芥末罗氏虾.md","芥末罗氏虾","meat_dish"],["dishes/meat_dish/茭白炒肉/茭白炒肉.md","茭白炒肉","meat_dish"],["dishes/meat_dish/荔枝肉/荔枝肉.md","荔枝肉","meat_dish"],["dishes/meat_dish/荷兰豆炒腊肠/荷兰豆炒腊肠.md","荷兰豆炒腊肠","meat_dish"],["dishes/meat_dish/萝卜炖羊排.md","萝卜炖羊排","meat_dish"],["dishes/meat_dish/葱烧鸡腿.md","葱烧鸡腿","meat_dish"],["dishes/meat_dish/蒜苔炒肉末.md","蒜苔炒肉末","meat_dish"],["dishes/meat_dish/虎皮肘子.md","虎皮肘子","meat_dish"],["dishes/meat_dish/蚂蚁上树.md","蚂蚁上树","meat_dish"],["dishes/meat_dish/血浆鸭/血浆鸭.md","血浆鸭","meat_dish"],["dishes/meat_dish/西红柿土豆炖牛肉/西红柿土豆炖牛肉.md","西红柿土豆炖牛肉","meat_dish"],["dishes/meat_dish/西红柿牛腩/西红柿牛腩.md","西红柿牛腩","meat_dish"],["dishes/meat_dish/豆豉鲮鱼油麦菜/豆豉鲮鱼油麦菜.md","豆豉鲮鱼油麦菜","meat_dish"],["dishes/meat_dish/豉汁排骨.md","豉汁排骨","meat_dish"],["dishes/meat_dish/豉汁蒸白鱔/豉汁蒸白鱔.md","豉汁蒸白鱔","meat_dish"],["dishes/meat_dish/贵州辣子鸡/贵州辣子鸡.md","贵州辣子鸡","meat_dish"],["dishes/meat_dish/辣椒炒肉.md","辣椒炒肉","meat_dish"],["dishes/meat_dish/酱排骨/酱排骨.md","酱排骨","meat_dish"],["dishes/meat_dish/酱牛肉/酱牛肉.md","酱牛肉","meat_dish"],["dishes/meat_dish/醉排骨/醉排骨.md","醉排骨","meat_dish"],["dishes/meat_dish/青椒土豆炒肉/青椒土豆炒肉.md","青椒土豆炒肉","meat_dish"],["dishes/meat_dish/青椒酿/青椒酿.md","青椒酿","meat_dish"],["dishes/meat_dish/香干肉丝.md","香干肉丝","meat_dish"],["dishes/meat_dish/香干芹菜炒肉/香干芹菜炒肉.md","香干芹菜炒肉","meat_dish"],["dishes/meat_dish/香煎五花肉/香煎五花肉.md","香煎五花肉","meat_dish"],["dishes/meat_dish/香菇滑鸡/香菇滑鸡.md","香菇滑鸡","meat_dish"],["dishes/meat_dish/香辣鸡爪煲/香辣鸡爪煲.md","香辣鸡爪煲","meat_dish"],["dishes/meat_dish/鱼香肉丝.md","鱼香肉丝","meat_dish"],["dishes/meat_dish/鱼香茄子/鱼香茄子.md","鱼香茄子","meat_dish"],["dishes/meat_dish/麻婆豆腐/麻婆豆腐.md","麻婆豆腐","meat_dish"],["dishes/meat_dish/麻辣香锅.md","麻辣香锅","meat_dish"],["dishes/meat_dish/黄油鸡.md","黄油鸡","meat_dish"],["dishes/meat_dish/黄焖鸡.md","黄焖鸡","meat_dish"],["dishes/meat_dish/黄瓜炒肉.md","黄瓜炒肉","meat_dish"],["dishes/meat_dish/黑椒牛柳/黑椒牛柳.md","黑椒牛柳","meat_dish"],["dishes/meat_dish/黔式腊肠娃娃菜/黔式腊肠娃娃菜.md","黔式腊肠娃娃菜","meat_dish"],["dishes/aquatic/咖喱炒蟹.md","咖喱炒蟹","aquatic"],["dishes/aquatic/响油鳝丝.md","响油鳝丝","aquatic"],["dishes/aquatic/小龙虾/小龙虾.md","小龙虾","aquatic"],["dishes/aquatic/干煎阿根廷红虾/干煎阿根廷红虾.md","干煎阿根廷红虾","aquatic"],["dishes/aquatic/微波葱姜黑鳕鱼.md","微波葱姜黑鳕鱼","aquatic"],["dishes/aquatic/水煮鱼.md","水煮鱼","aquatic"],["dishes/aquatic/油焖大虾/油焖大虾.md","油焖大虾","aquatic"],["dishes/aquatic/清蒸生蚝.md","清蒸生蚝","aquatic"],["dishes/aquatic/清蒸鲈鱼/清蒸鲈鱼.md","清蒸鲈鱼","aquatic"],["dishes/aquatic/混合烤鱼/烤鱼.md","烤鱼","aquatic"],["dishes/aquatic/白灼虾/白灼虾.md","白灼虾","aquatic"],["dishes/aquatic/糖醋鲤鱼/糖醋鲤鱼.md","糖醋鲤鱼","aquatic"],["dishes/aquatic/红烧鱼.md","红烧鱼","aquatic"],["dishes/aquatic/红烧鱼头.md","红烧鱼头","aquatic"],["dishes/aquatic/红烧鲤鱼.md","红烧鲤鱼","aquatic"],["dishes/aquatic/肉蟹煲.md","肉蟹煲","aquatic"],["dishes/aquatic/芥末黄油罗氏虾/芥末黄油罗氏虾.md","芥末黄油罗氏虾","aquatic"],["dishes/aquatic/葱油桂鱼/葱油桂鱼.md","葱油桂鱼","aquatic"],["dishes/aquatic/葱烧海参/葱烧海参.md","葱烧海参","aquatic"],["dishes/aquatic/蒜蓉虾/蒜蓉虾.md","蒜蓉虾","aquatic"],["dishes/aquatic/蒜香黄油虾/蒜香黄油虾.md","蒜香黄油虾","aquatic"],["dishes/aquatic/蛏抱蛋/蛏抱蛋.md","蛏抱蛋","aquatic"],["dishes/aquatic/酱炖蟹.md","酱炖蟹","aquatic"],["dishes/aquatic/阳朔啤酒鱼/阳朔啤酒鱼.md","阳朔啤酒鱼","aquatic"],["dishes/aquatic/香煎翘嘴鱼/香煎翘嘴鱼.md","香煎翘嘴鱼","aquatic"],["dishes/aquatic/鲤鱼炖白菜/鲤鱼炖白菜.md","鲤鱼炖白菜","aquatic"],["dishes/aquatic/鳊鱼炖豆腐/鳊鱼炖豆腐.md","鳊鱼炖豆腐","aquatic"],["dishes/aquatic/黄油煎虾/黄油煎虾.md","黄油煎虾","aquatic"],["dishes/breakfast/吐司果酱.md","吐司果酱","breakfast"],["dishes/breakfast/太阳蛋.md","太阳蛋","breakfast"],["dishes/breakfast/完美水煮蛋.md","完美水煮蛋","breakfast"],["dishes/breakfast/微波炉荷包蛋.md","微波炉荷包蛋","breakfast"],["dishes/breakfast/微波炉蒸蛋.md","微波炉蒸蛋","breakfast"],["dishes/breakfast/微波炉蛋糕.md","微波炉蛋糕","breakfast"],["dishes/breakfast/意式香肠北非蛋.md","意式香肠北非蛋","breakfast"],["dishes/breakfast/手抓饼.md","手抓饼","breakfast"],["dishes/breakfast/桂圆红枣粥.md","桂圆红枣粥","breakfast"],["dishes/breakfast/水煮玉米.md","水煮玉米","breakfast"],["dishes/breakfast/温泉蛋/温泉蛋.md","温泉蛋","breakfast"],["dishes/breakfast/溏心蛋.md","溏心蛋","breakfast"],["dishes/breakfast/煎饺.md","煎饺","breakfast"],["dishes/breakfast/燕麦鸡蛋饼.md","燕麦鸡蛋饼","breakfast"],["dishes/breakfast/牛奶燕麦.md","牛奶燕麦","breakfast"],["dishes/breakfast/空气炸锅面包片.md","空气炸锅面包片","breakfast"],["dishes/breakfast/美式炒蛋.md","美式炒蛋","breakfast"],["dishes/breakfast/苏格兰蛋/苏格兰蛋.md","苏格兰蛋","breakfast"],["dishes/breakfast/茶叶蛋.md","茶叶蛋","breakfast"],["dishes/breakfast/蒸水蛋.md","蒸水蛋","breakfast"],["dishes/breakfast/蒸花卷.md","蒸花卷","breakfast"],["dishes/breakfast/蛋煎糍粑.md","蛋煎糍粑","breakfast"],["dishes/breakfast/金枪鱼酱三明治.md","金枪鱼酱三明治","breakfast"],["dishes/breakfast/韩国麻药鸡蛋.md","韩国麻药鸡蛋","breakfast"],["dishes/breakfast/鸡蛋三明治.md","鸡蛋三明治","breakfast"],["dishes/staple/中式馅饼/中式馅饼.md","中式馅饼","staple"],["dishes/staple/凉粉/凉粉.md","凉粉","staple"],["dishes/staple/利提巧卡.md","利提巧卡","staple"],["dishes/staple/印度烤饼.md","印度烤饼","staple"],["dishes/staple/印度焖饭.md","印度焖饭","staple"],["dishes/staple/可乐炒饭.md","可乐炒饭","staple"],["dishes/staple/咸肉菜饭.md","咸肉菜饭","staple"],["dishes/staple/基础牛奶面包/基础牛奶面包.md","基础牛奶面包","staple"],["dishes/staple/微波炉腊肠煲仔饭/微波炉腊肠煲仔饭.md","微波炉腊肠煲仔饭","staple"],["dishes/staple/意式肉酱面/意式肉酱面.md","意式肉酱面","staple"],["dishes/staple/手工水饺.md","手工水饺","staple"],["dishes/staple/扬州炒饭/扬州炒饭.md","扬州炒饭","staple"],["dishes/staple/披萨饼皮/披萨饼皮.md","披萨饼皮","staple"],["dishes/staple/日式咖喱饭/日式咖喱饭.md","日式咖喱饭","staple"],["dishes/staple/日式肥牛丼饭/日式肥牛丼饭.md","日式肥牛丼饭","staple"],["dishes/staple/汤面.md","汤面","staple"],["dishes/staple/河南蒸面条/河南蒸面条.md","河南蒸面条","staple"],["dishes/staple/滕州菜煎饼.md","滕州菜煎饼","staple"],["dishes/staple/火腿饭团/火腿饭团.md","火腿饭团","staple"],["dishes/staple/炒凉粉/炒凉粉.md","炒凉粉","staple"],["dishes/staple/炒年糕.md","炒年糕","staple"],["dishes/staple/炒意大利面/炒意大利面.md","炒意大利面","staple"],["dishes/staple/炒方便面/炒方便面.md","炒方便面","staple"],["dishes/staple/炒河粉.md","炒河粉","staple"],["dishes/staple/炒馍.md","炒馍","staple"],["dishes/staple/炸酱面.md","炸酱面","staple"],["dishes/staple/烙饼/烙饼.md","烙饼","staple"],["dishes/staple/热干面.md","热干面","staple"],["dishes/staple/照烧鸡腿饭.md","照烧鸡腿饭","staple"],["dishes/staple/煮泡面加蛋.md","煮泡面加蛋","staple"],["dishes/staple/米饭/煮锅蒸米饭.md","煮锅蒸米饭","staple"],["dishes/staple/猪油拌饭.md","猪油拌饭","staple"],["dishes/staple/电饭煲三文鱼炊饭/电饭煲三文鱼炊饭.md","电饭煲三文鱼炊饭","staple"],["dishes/staple/米饭/电饭煲蒸米饭.md","电饭煲蒸米饭","staple"],["dishes/staple/空气炸锅照烧鸡饭/空气炸锅照烧鸡饭.md","空气炸锅照烧鸡饭","staple"],["dishes/staple/红芸豆拌饭.md","红芸豆拌饭","staple"],["dishes/staple/老友猪肉粉/老友猪肉粉.md","老友猪肉粉","staple"],["dishes/staple/老干妈拌面.md","老干妈拌面","staple"],["dishes/staple/肉蛋盖饭.md","肉蛋盖饭","staple"],["dishes/staple/烧饼/芝麻烧饼.md","芝麻烧饼","staple"],["dishes/staple/茄子肉煎饼/茄子肉煎饼.md","茄子肉煎饼","staple"],["dishes/staple/葱油拌面.md","葱油拌面","staple"],["dishes/staple/蒸卤面.md","蒸卤面","staple"],["dishes/staple/蛋包饭.md","蛋包饭","staple"],["dishes/staple/蛋炒饭.md","蛋炒饭","staple"],["dishes/staple/螺蛳粉.md","螺蛳粉","staple"],["dishes/staple/西红柿鸡蛋挂面/西红柿鸡蛋挂面.md","西红柿鸡蛋挂面","staple"],["dishes/staple/豆角焖面/豆角焖面.md","豆角焖面","staple"],["dishes/staple/酱拌荞麦面/酱拌荞麦面.md","酱拌荞麦面","staple"],["dishes/staple/酸辣蕨根粉.md","酸辣蕨根粉","staple"],["dishes/staple/醪糟小汤圆.md","醪糟小汤圆","staple"],["dishes/staple/陕西油泼面/陕西油泼面.md","陕西油泼面","staple"],["dishes/staple/韩式拌饭/韩式拌饭.md","韩式拌饭","staple"],["dishes/staple/韭菜盒子.md","韭菜盒子","staple"],["dishes/staple/鲜肉烧卖.md","鲜肉烧卖","staple"],["dishes/staple/鲣鱼海苔玉米饭/鲣鱼海苔玉米饭.md","鲣鱼海苔玉米饭","staple"],["dishes/staple/鹰嘴豆炸饼.md","鹰嘴豆炸饼","staple"],["dishes/staple/麻油拌面.md","麻油拌面","staple"],["dishes/staple/麻辣减脂荞麦面.md","麻辣减脂荞麦面","staple"],["dishes/soup/勾芡香菇汤/勾芡香菇汤.md","勾芡香菇汤","soup"],["dishes/soup/奶油蘑菇汤.md","奶油蘑菇汤","soup"],["dishes/soup/小米粥.md","小米粥","soup"],["dishes/soup/山药南瓜炖鸡汤.md","山药南瓜炖鸡汤","soup"],["dishes/soup/排骨山药玉米汤/排骨山药玉米汤.md","排骨山药玉米汤","soup"],["dishes/soup/排骨苦瓜汤/排骨苦瓜汤.md","排骨苦瓜汤","soup"],["dishes/soup/昂刺鱼豆腐汤/昂刺鱼豆腐汤.md","昂刺鱼豆腐汤","soup"],["dishes/soup/朱雀汤/朱雀汤.md","朱雀汤","soup"],["dishes/soup/玉米排骨汤/玉米排骨汤.md","玉米排骨汤","soup"],["dishes/soup/生汆丸子汤.md","生汆丸子汤","soup"],["dishes/soup/番茄牛肉蛋花汤.md","番茄牛肉蛋花汤","soup"],["dishes/soup/皮蛋瘦肉粥.md","皮蛋瘦肉粥","soup"],["dishes/soup/米粥.md","米粥","soup"],["dishes/soup/紫菜蛋花汤.md","紫菜蛋花汤","soup"],["dishes/soup/罗宋汤.md","罗宋汤","soup"],["dishes/soup/羊肉汤/羊肉汤.md","羊肉汤","soup"],["dishes/soup/腊八粥.md","腊八粥","soup"],["dishes/soup/菌菇炖乳鸽/菌菇炖乳鸽.md","菌菇炖乳鸽","soup"],["dishes/soup/西红柿鸡蛋汤.md","西红柿鸡蛋汤","soup"],["dishes/soup/金针菇汤.md","金针菇汤","soup"],["dishes/soup/银耳莲子粥/银耳莲子粥.md","银耳莲子粥","soup"],["dishes/soup/陈皮排骨汤/陈皮排骨汤.md","陈皮排骨汤","soup"],["dishes/soup/黄瓜皮蛋汤.md","黄瓜皮蛋汤","soup"],["dishes/drink/B52轰炸机.md","B52轰炸机","drink"],["dishes/drink/Mojito莫吉托.md","Mojito莫吉托","drink"],["dishes/drink/冬瓜茶.md","冬瓜茶","drink"],["dishes/drink/冰粉/冰粉.md","冰粉","drink"],["dishes/drink/印度奶茶.md","印度奶茶","drink"],["dishes/drink/可乐桶.md","可乐桶","drink"],["dishes/drink/奇异果菠菜特调/奇异果菠菜特调.md","奇异果菠菜特调","drink"],["dishes/drink/奶茶.md","奶茶","drink"],["dishes/drink/杨枝甘露.md","杨枝甘露","drink"],["dishes/drink/柠檬水/柠檬水.md","柠檬水","drink"],["dishes/drink/泰国手标红茶/泰国手标红茶.md","泰国手标红茶","drink"],["dishes/drink/海边落日/海边落日.md","海边落日","drink"],["dishes/drink/牛油果拉西.md","牛油果拉西","drink"],["dishes/drink/百香果橙子特调/百香果橙子特调.md","百香果橙子特调","drink"],["dishes/drink/砂糖椰子冰沙/砂糖椰子冰沙.md","砂糖椰子冰沙","drink"],["dishes/drink/耙耙柑茶/耙耙柑茶.md","耙耙柑茶","drink"],["dishes/drink/菠萝咖啡特调/菠萝咖啡特调.md","菠萝咖啡特调","drink"],["dishes/drink/酒酿醪糟/酒酿醪糟.md","酒酿醪糟","drink"],["dishes/drink/酸梅汤/酸梅汤.md","酸梅汤","drink"],["dishes/drink/酸梅汤（半成品加工）.md","酸梅汤（半成品加工）","drink"],["dishes/drink/金汤力/金汤力.md","金汤力","drink"],["dishes/drink/金菲士/金菲士.md","金菲士","drink"],["dishes/drink/长岛冰茶.md","长岛冰茶","drink"],["dishes/condiment/油泼辣子/油泼辣子.md","油泼辣子","condiment"],["dishes/condiment/油酥.md","油酥","condiment"],["dishes/condiment/炸串酱料.md","炸串酱料","condiment"],["dishes/condiment/简易版炒糖色.md","简易版炒糖色","condiment"],["dishes/condiment/糖醋汁.md","糖醋汁","condiment"],["dishes/condiment/草莓酱/草莓酱.md","草莓酱","condiment"],["dishes/condiment/葱油.md","葱油","condiment"],["dishes/condiment/蒜香酱油.md","蒜香酱油","condiment"],["dishes/condiment/蔗糖糖浆/蔗糖糖浆.md","蔗糖糖浆","condiment"],["dishes/dessert/反沙芋头/反沙芋头.md","反沙芋头","dessert"],["dishes/dessert/咖啡椰奶冻/咖啡椰奶冻.md","咖啡椰奶冻","dessert"],["dishes/dessert/奥利奥冰淇淋/奥利奥冰淇淋.md","奥利奥冰淇淋","dessert"],["dishes/dessert/戚风蛋糕/戚风蛋糕.md","戚风蛋糕","dessert"],["dishes/dessert/提拉米苏/提拉米苏.md","提拉米苏","dessert"],["dishes/dessert/无厨师机蜂蜜面包/无厨师机蜂蜜面包.md","无厨师机蜂蜜面包","dessert"],["dishes/dessert/炸鲜奶/炸鲜奶.md","炸鲜奶","dessert"],["dishes/dessert/烤箱版巴斯克芝士蛋糕/烤箱版巴斯克芝士蛋糕.md","烤箱版巴斯克芝士蛋糕","dessert"],["dishes/dessert/烤蛋挞/烤蛋挞.md","烤蛋挞","dessert"],["dishes/dessert/玛格丽特饼干/玛格丽特饼干.md","玛格丽特饼干","dessert"],["dishes/dessert/红柚蛋糕/红柚蛋糕.md","红柚蛋糕","dessert"],["dishes/dessert/胡萝卜甜糕.md","胡萝卜甜糕","dessert"],["dishes/dessert/芋泥雪媚娘/芋泥雪媚娘.md","芋泥雪媚娘","dessert"],["dishes/dessert/英式司康/英式司康.md","英式司康","dessert"],["dishes/dessert/草莓冰淇淋/草莓冰淇淋.md","草莓冰淇淋","dessert"],["dishes/dessert/酸奶意式奶冻/酸奶意式奶冻.md","酸奶意式奶冻","dessert"],["dishes/dessert/雪花酥/雪花酥.md","雪花酥","dessert"],["dishes/dessert/魔芋蛋糕/魔芋蛋糕.md","魔芋蛋糕","dessert"],["dishes/dessert/龟苓膏/龟苓膏.md","龟苓膏","dessert"],["dishes/semi-finished/凉皮.md","凉皮","semi-finished"],["dishes/semi-finished/半成品意面.md","半成品意面","semi-finished"],["dishes/semi-finished/懒人蛋挞/懒人蛋挞.md","懒人蛋挞","semi-finished"],["dishes/semi-finished/炸薯条/炸薯条.md","炸薯条","semi-finished"],["dishes/semi-finished/牛油火锅底料.md","牛油火锅底料","semi-finished"],["dishes/semi-finished/空气炸锅羊排/空气炸锅羊排.md","空气炸锅羊排","semi-finished"],["dishes/semi-finished/空气炸锅鸡翅中/空气炸锅鸡翅中.md","空气炸锅鸡翅中","semi-finished"],["dishes/semi-finished/速冻水饺.md","速冻水饺","semi-finished"],["dishes/semi-finished/速冻汤圆/速冻汤圆.md","速冻汤圆","semi-finished"],["dishes/semi-finished/速冻馄饨.md","速冻馄饨","semi-finished"]];
-const CATEGORY = {
-  vegetable_dish: '素菜', meat_dish: '荤菜', aquatic: '水产', breakfast: '早餐', staple: '主食',
-  soup: '汤与粥', drink: '饮料', condiment: '酱料', dessert: '甜品', 'semi-finished': '半成品'
-};
-const enc = p => p.split('/').map(encodeURIComponent).join('/');
-const SOURCES = [
-  p => 'https://raw.githubusercontent.com/Anduin2017/HowToCook/master/' + enc(p),
-  p => 'https://cdn.jsdelivr.net/gh/Anduin2017/HowToCook@master/' + enc(p),
-];
-
-function clean(s) {
-  return s
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/<[^>]+>/g, '')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .trim();
-}
-
-function imagesIn(s, baseDir) {
-  const out = [];
-  s.replace(/!\[[^\]]*\]\(([^)\s]+)[^)]*\)/g, (_, src) => {
-    if (/^https?:/.test(src)) out.push(src);
-    else {
-      const parts = (baseDir + '/' + src).split('/');
-      const res = [];
-      for (const x of parts) { if (x === '..') res.pop(); else if (x && x !== '.') res.push(x); }
-      out.push(res.join('/'));
-    }
-    return '';
+/* ---------- Pages: 2 intro pages, then one page per action ---------- */
+function pagesOf(r) {
+  const pages = [{ type: 'overview' }, { type: 'ingredients' }];
+  r.steps.forEach((s, si) => {
+    s.how.forEach((text, k) => pages.push({
+      type: 'step', step: s, si, n: si + 1, total: r.steps.length,
+      sub: k, subs: s.how.length, text, zone: s.zone,
+      first: k === 0, last: k === s.how.length - 1,
+    }));
   });
-  return out;
+  return pages;
+}
+const page = () => state.recipe.pages[state.page];
+const zoneLabel = z => `${ZONES[z].icon} ${t(ZONES[z].name)}`;
+const zonesAt = p => layout.order.filter(z => layout.pedal[z] === p);
+function targetZone() {
+  const p = page();
+  return p.type === 'step' ? p.zone : state.recipe.steps[0].zone;
+}
+function distance(target) {   // positive = to the right
+  const here = zonesAt(state.at).map(z => layout.order.indexOf(z));
+  if (!here.length) return null;
+  const ti = layout.order.indexOf(target);
+  if (here.includes(ti)) return 0;
+  const nearest = here.reduce((a, b) => (Math.abs(b - ti) < Math.abs(a - ti) ? b : a));
+  return ti - nearest;
 }
 
-function parseRecipe(md, fallbackTitle, path = '') {
-  const baseDir = path.split('/').slice(0, -1).join('/');
-  const lines = md.replace(/\r/g, '').split('\n');
-  let title = fallbackTitle;
-  const intro = [];
-  const sections = {};
-  const order = [];
-  let cur = null;
-  for (const l of lines) {
-    let m;
-    if ((m = l.match(/^#\s+(.+)/))) { title = m[1].replace(/的做法\s*$/, '').trim(); continue; }
-    if ((m = l.match(/^##\s+(.+)/))) { cur = m[1].trim(); sections[cur] = []; order.push(cur); continue; }
-    (cur ? sections[cur] : intro).push(l);
-  }
-  const section = key => sections[order.find(o => o.includes(key))] || [];
-  const bullet = /^\s*[-*+]\s+(.*)/;
-
-  const pages = [];
-
-  // Page 1: dish name, intro, ingredients
-  const paras = intro.map(clean).filter(Boolean);
-  const ingredients = section('原料').map(l => l.match(bullet)).filter(Boolean).map(m => clean(m[1])).filter(Boolean);
-  const overview = { type: 'overview', text: title, paras, items: ingredients, imgs: imagesIn(intro.join('\n'), baseDir) };
-  pages.push(overview);
-
-  // Page 2: amounts
-  const calc = section('计算').map(l => clean(l.replace(/^\s*[-*+]\s+/, ''))).filter(Boolean);
-  if (calc.length) pages.push({ type: 'calc', text: '用量计算', items: calc });
-
-  // Then one page per step
-  const ops = section('操作');
-  const hasNumbered = ops.some(l => /^\d+[.)、]\s+/.test(l));
-  const top = hasNumbered ? /^\d+[.)、]\s+(.*)/ : /^[-*+]\s+(.*)/;
-  let group = '';
-  let last = null;
-  const pending = [];
-  const steps = [];
-  for (const raw of ops) {
-    let m;
-    if ((m = raw.match(/^###+\s+(.+)/))) { group = clean(m[1]); continue; }
-    const imgs = imagesIn(raw, baseDir);
-    if ((m = raw.match(top)) && clean(m[1])) {
-      last = { type: 'step', group, text: clean(m[1]), notes: pending.splice(0), imgs };
-      steps.push(last);
-      continue;
-    }
-    if (last) last.imgs.push(...imgs);
-    const t = clean(raw.replace(/^\s*[-*+]\s+/, '').replace(/^\s*\d+[.)、]\s+/, ''));
-    if (!t) continue;
-    (last ? last.notes : pending).push(t);
-  }
-  // Ingredient names are short words ("鸡蛋", "葱"); a step uses one when its text contains the name
-  const names = ingredients.map(s => s.split(/[\s（(：:,，]/)[0]).filter(Boolean);
-  steps.forEach((s, i) => {
-    s.n = i + 1; s.total = steps.length;
-    const text = s.text + s.notes.join('');
-    s.needs = [...new Set(names.filter(n => text.includes(n)))];
-  });
-  // No photo at the top of the recipe: show the last step photo (usually the finished dish) on the first page
-  const stepImgs = steps.flatMap(s => s.imgs);
-  if (!overview.imgs.length && stepImgs.length) overview.imgs = [stepImgs[stepImgs.length - 1]];
-  pages.push(...steps);
-  return { title, pages };
-}
-
-const HowToCook = {
-  defaultId: 'dishes/vegetable_dish/西红柿炒鸡蛋.md',
-  defaultCat: '',
-  async categories() {
-    return [{ key: '', label: '全部' }, ...Object.entries(CATEGORY).map(([key, label]) => ({ key, label }))];
-  },
-  async list(cat) {
-    return RECIPES.filter(r => !cat || r[2] === cat).map(([id, name, c]) => ({ id, name, sub: CATEGORY[c] || c }));
-  },
-  async search(q) {
-    return RECIPES.filter(r => r[1].includes(q)).map(([id, name, c]) => ({ id, name, sub: CATEGORY[c] || c }));
-  },
-  async load(path) {
-    const entry = RECIPES.find(r => r[0] === path);
-    if (!entry) throw new Error('not found');
-    let md = store.get('hfr.md.' + path);
-    if (!md) {
-      let lastErr;
-      for (const src of SOURCES) {
-        try {
-          const res = await fetch(src(path));
-          if (!res.ok) throw new Error(res.status);
-          md = await res.text();
-          store.set('hfr.md.' + path, md);
-          break;
-        } catch (e) { lastErr = e; }
-      }
-      if (!md) throw lastErr;
-    }
-    return { id: path, ...parseRecipe(md, entry[1], path) };
-  },
-};
-
-const PROVIDERS = { en: MealDB, zh: HowToCook };
-let provider = PROVIDERS[lang];
-
-/* ---------- Display ---------- */
+/* ---------- Text ---------- */
 function esc(s) {
   return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
-
-// Highlight what the cook has to watch: times and temperatures (and `code` spans in HowToCook)
 const KEY_INFO = {
-  en: /\b\d+(?:[.\/]\d+)?(?:\s*(?:-|–|to)\s*\d+(?:[.\/]\d+)?)?\s*(?:°\s*[CF]\b|°|C\b(?=\/|\s|$|[.,])|F\b|degrees|minutes?|mins?|hours?|hrs?|seconds?|secs?)/gi,
-  zh: /\d+(?:\.\d+)?\s*(?:[-~～到]\s*\d+(?:\.\d+)?\s*)?(?:分钟|秒钟?|小时|℃|度)/g,
+  zh: /\d+(?:\.\d+)?(?:\s*[–\-~到]\s*\d+)?\s*(?:分钟|秒|小时|℃|度|mm|cm|g|ml|L\b)/g,
+  en: /(?:\d+(?:\.\d+)?)?[½¼]?(?:\s*[–\-]\s*\d+)?\s*(?:seconds?|minutes?|mins?|hours?|mm|cm|g|ml|L)\b/g,
 };
-function fmt(s) {
-  return esc(s).split(/(`[^`]+`)/).map((part, i) =>
-    i % 2 ? `<mark>${part.slice(1, -1)}</mark>` : part.replace(KEY_INFO[lang], m => `<mark>${m}</mark>`)).join('');
+const fmt = s => esc(s).replace(KEY_INFO[lang], m => (/\d|[½¼]/.test(m) ? `<mark>${m}</mark>` : m));
+const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+
+/* ---------- Kitchen strip ---------- */
+function stripHTML(target, { preview = false } = {}) {
+  const n = layout.order.length;
+  const center = i => ((i + 0.5) / n) * 100;
+  const hereIdx = preview ? [] : zonesAt(state.at).map(z => layout.order.indexOf(z));
+  const ti = target ? layout.order.indexOf(target) : -1;
+  const arrived = ti >= 0 && hereIdx.includes(ti);
+  const tag = preview ? 'div' : 'button';
+
+  const cells = layout.order.map((z, i) => {
+    const cls = ['zone'];
+    if (i === ti) cls.push('target');
+    if (hereIdx.includes(i)) cls.push('here');
+    const p = layout.pedal[z];
+    return `<${tag} class="${cls.join(' ')}" data-zone="${z}" style="--z:var(--z-${z})">
+      <span class="zi">${ZONES[z].icon}</span><span class="zt"><span class="zn">${esc(t(ZONES[z].short))}</span>
+      <span class="zp">${p >= 0 ? T.pedalN(p + 1) : T.noPedal}</span></span></${tag}>`;
+  }).join('');
+
+  let flags = '', track = '';
+  if (ti >= 0) {
+    flags = `<span class="goal ${arrived ? 'arrived' : ''}" style="left:${center(ti)}%;--z:var(--z-${target})">${arrived ? T.arrivedHere : T.goHere}</span>`;
+  }
+  if (hereIdx.length) {
+    const youPos = hereIdx.reduce((a, b) => a + center(b), 0) / hereIdx.length;
+    if (ti >= 0 && !arrived) {
+      const d = distance(target);
+      const from = center(ti - d);
+      track += `<span class="route ${d > 0 ? 'right' : 'left'}" style="left:${Math.min(from, center(ti))}%;width:${Math.abs(center(ti) - from)}%"></span>`;
+    }
+    track += `<span class="you ${state.moving ? 'moving' : ''}" style="left:${youPos}%">🧍 ${T.youHere}</span>`;
+  }
+  return `<div class="strip" style="--n:${n}">
+    ${preview ? '' : `<div class="flags">${flags}</div>`}
+    <div class="counter">${cells}</div>
+    ${preview ? '' : `<div class="track">${track}</div>`}
+  </div>`;
 }
 
+function bannerHTML(target) {
+  const p = page();
+  const intro = p.type !== 'step';
+  const d = distance(target);
+  if (d === 0) {
+    const text = intro ? T.startAt(zoneLabel(target)) : T.youAreAt(zoneLabel(target));
+    const sub = intro ? T.startSub : state.locked ? T.lockedNote : '';
+    return `<div class="banner ok"><b>${text}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;
+  }
+  const pedal = layout.pedal[target];
+  const parts = [];
+  if (d !== null) parts.push(T.steps(d));
+  if (state.moving) parts.push(T.turningScreen);
+  else if (state.locked) parts.push(T.lockedNote);
+  else if (pedal >= 0) parts.push(T.pressPedal(pedal + 1));
+  const head = intro ? T.startAt(zoneLabel(target)) : T.goTo(zoneLabel(target));
+  return `<div class="banner" style="--z:var(--z-${target})"><b>${head}</b><span>${parts.join(' · ')}</span></div>`;
+}
+
+/* ---------- Render ---------- */
 function render() {
-  renderStations();
   const r = state.recipe;
   if (!r) return;
-  const p = r.pages[state.page];
-  $('recipeBtn').textContent = r.title;
-
-  $('progress').innerHTML = r.pages.map((_, i) =>
-    `<span class="${i < state.page ? 'done' : i === state.page ? 'now' : ''}"></span>`).join('');
-
-  if (p.type === 'step') {
-    $('count').textContent = T.stepCount(p.n, p.total);
-    $('group').textContent = p.group || '';
-  } else {
-    $('count').textContent = p.type === 'calc' ? T.calc : T.ready;
-    $('group').textContent = p.type === 'overview' && p.items.length ? T.ingredientsN(p.items.length) : '';
-  }
-
-  const h = $('stepText');
-  h.className = p.type === 'step' ? '' : 'title' + (p.text.length > 28 ? ' long' : '');
-  h.innerHTML = p.type === 'step' ? fmt(p.text) : esc(p.text);
-
-  $('needs').innerHTML = p.type === 'step' && p.needs.length
-    ? `<span class="label">${T.need}</span>` + p.needs.map(t => `<span class="chip">${esc(t)}</span>`).join('')
-    : '';
-
-  $('paras').innerHTML = p.type === 'overview' ? p.paras.map(t => `<p>${fmt(t)}</p>`).join('') : '';
-
-  const list = p.type === 'step' ? p.notes : p.items;
-  const ul = $('items');
-  ul.className = 'items' + (p.type === 'overview' ? '' : ' notes') + ((list || []).length > 10 ? ' many' : '');
-  ul.innerHTML = (list || []).map(t => `<li>${fmt(t)}</li>`).join('');
-
-  $('photos').innerHTML = (p.imgs || []).map(src => {
-    const urls = /^https?:/.test(src) ? [src] : SOURCES.map(f => f(src));
-    return `<img alt="" loading="lazy" src="${esc(urls[0])}" data-alt="${esc(urls[1] || '')}" onerror="if(this.dataset.alt){this.src=this.dataset.alt;this.dataset.alt=''}else{this.remove()}">`;
+  const p = page();
+  const target = targetZone();
+  $('recipeBtn').textContent = t(r.name);
+  $('strip').innerHTML = stripHTML(target);
+  $('banner').innerHTML = bannerHTML(target);
+  $('progress').innerHTML = r.pages.map((q, i) => {
+    const prevQ = r.pages[i - 1];
+    const gap = i > 0 && (!prevQ || prevQ.si !== q.si) ? ' gap' : '';
+    const st = i < state.page ? ' done' : i === state.page ? ' now' : '';
+    return `<button data-page="${i}" class="${gap}${st}" ${q.zone ? `style="--z:var(--z-${q.zone})"` : ''} aria-label="${i + 1}"></button>`;
   }).join('');
 
-  store.set(`hfr.${lang}.last`, { id: r.id, page: state.page });
+  const card = p.type === 'overview' ? overviewHTML(r) : p.type === 'ingredients' ? ingredientsHTML(r) : stepHTML(p);
+  $('body').innerHTML = card + nextLineHTML(r);
+  $('prevBtn').disabled = state.page === 0;
+  $('nextBtn').disabled = state.page === r.pages.length - 1;
+  fit();
+  store.set('hfr.last', { id: r.id, page: state.page });
 }
 
-function renderStations(pingIndex) {
-  $('stations').innerHTML = T.stations.map((name, i) => {
-    const cls = ['station'];
-    if (i === state.facing) cls.push('active');
-    if (i === state.facing && state.moving) cls.push('moving');
-    if (i === pingIndex) cls.push('ping');
-    return `<span class="${cls.join(' ')}">${name}</span>`;
-  }).join('');
-  $('lockBtn').setAttribute('aria-pressed', state.locked);
-  $('autoBtn').setAttribute('aria-pressed', state.autoRead);
+// Shrink the text until the whole page fits — with foot pedals there is no scrolling
+function fit() {
+  const card = document.querySelector('#body .card');
+  if (!card) return;
+  let fs = 1;
+  card.style.setProperty('--fs', fs);
+  while (card.scrollHeight > card.clientHeight + 1 && fs > 0.5) {
+    fs = Math.round((fs - 0.04) * 100) / 100;
+    card.style.setProperty('--fs', fs);
+  }
+}
+let fitTimer;
+window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(fit, 80); });
+
+function overviewHTML(r) {
+  const route = r.steps.map((s, i) =>
+    `${i ? '<span class="arr">→</span>' : ''}<span class="rc" style="--z:var(--z-${s.zone})">${ZONES[s.zone].icon}${i + 1}</span>`).join('');
+  return `<section class="card">
+    <p class="kicker">${T.ready} · ${T.serves(r.serves)} · ${T.minutes(r.minutes)} · ${T.stepsN(r.steps.length)}</p>
+    <h1 class="ov-title">${esc(t(r.name))}</h1>
+    <p class="intro">${esc(t(r.intro))}</p>
+    <p class="section-label">${T.tools}</p>
+    <p class="tools">${esc(t(r.tools))}</p>
+    <p class="section-label">${T.route}</p>
+    <div class="route-chips">${route}</div>
+  </section>`;
+}
+function ingredientsHTML(r) {
+  return `<section class="card">
+    <p class="kicker">${T.ready} · ${esc(t(r.name))}</p>
+    <h1 class="ov-title">${T.ingredients}</h1>
+    <ul class="ing">${r.ingredients.map(([n, a]) => `<li><span>${esc(t(n))}</span><span>${fmt(t(a))}</span></li>`).join('')}</ul>
+  </section>`;
+}
+
+function stepHTML(p) {
+  const s = p.step;
+  const dots = s.how.map((_, k) => `<i class="${k <= p.sub ? 'on' : ''}"></i>`).join('');
+  const uses = p.first && s.uses?.length
+    ? `<div class="uses">${s.uses.map(u => `<span class="chip">${fmt(t(u))}</span>`).join('')}</div>` : '';
+  return `<section class="card step" style="--z:var(--z-${p.zone})">
+    <div class="step-head"><span class="zone-tag">${zoneLabel(p.zone)}</span><span class="count">${T.stepOf(p.n, p.total)}</span>
+      ${p.subs > 1 ? `<span class="subdots">${dots}</span>` : ''}</div>
+    <div class="step-title"><span class="verb">${esc(t(s.verb))}</span><span>${esc(t(s.title))}</span></div>
+    <div class="instr"><span>${fmt(t(p.text))}</span></div>
+    ${uses}
+    ${p.last && s.done ? `<div class="callout done"><span class="ic">✓</span><div><b>${T.doneLook}：</b>${fmt(t(s.done))}</div></div>` : ''}
+    ${p.last && s.warn ? `<div class="callout warn"><span class="ic">!</span><div><b>${T.careful}：</b>${fmt(t(s.warn))}</div></div>` : ''}
+  </section>`;
+}
+
+function nextLineHTML(r) {
+  const p = page();
+  const np = r.pages[state.page + 1];
+  if (!np) return `<div class="next-line" style="--z:var(--ok)"><span class="nt">🍽 ${T.finish}</span></div>`;
+  if (np.type !== 'step') return '';
+  if (p.type === 'step' && np.si === p.si) {
+    return `<div class="next-line" style="--z:var(--z-${np.zone})"><span class="nl">${T.then}</span><span class="nt">${esc(t(np.text))}</span></div>`;
+  }
+  const move = p.type === 'step' && np.zone !== p.zone ? `<span class="nz">${T.goNext(zoneLabel(np.zone))}</span>` : '';
+  return `<div class="next-line" style="--z:var(--z-${np.zone})"><span class="nl">${T.nextStep}</span>${move}<span class="nt">${esc(t(np.step.title))}</span></div>`;
+}
+
+function pingZone(pedal) {
+  zonesAt(pedal).forEach(z => {
+    const el = document.querySelector(`#strip .zone[data-zone="${z}"]`);
+    if (!el) return;
+    el.classList.remove('ping'); void el.offsetWidth; el.classList.add('ping');
+  });
 }
 
 let flashTimer;
-function flash(msg) {
+function flash(msg, ms = 1200) {
   const el = $('flash');
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(flashTimer);
-  flashTimer = setTimeout(() => el.classList.remove('show'), 1200);
+  flashTimer = setTimeout(() => el.classList.remove('show'), ms);
 }
 
-/* ---------- Language switch ---------- */
+/* ---------- Language ---------- */
 function applyLang() {
   T = I18N[lang];
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = T[el.dataset.i18n]; });
-  document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = T[el.dataset.i18nHtml]; });
   document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = T[el.dataset.i18nTitle]; });
-  $('search').placeholder = T.search;
-  $('langBtn').textContent = lang === 'en' ? '中文' : 'English';
+  $('langBtn').textContent = lang === 'en' ? '中文' : 'EN';
+  $('prevBtn').textContent = T.prev;
+  $('nextBtn').textContent = T.next;
+  $('legend').innerHTML = T.legend;
+  setReading(reading);
   refreshConn();
-  renderStations();
+  renderToggles();
+  renderPicker();
+  renderLayoutEditor();
+  render();
 }
-
-function setLang(l) {
-  stopReading();
-  lang = l;
-  store.set('hfr.lang', l);
-  provider = PROVIDERS[l];
-  categories = [];
-  rows = [];
-  activeCat = store.get(`hfr.${l}.cat`) ?? provider.defaultCat;
-  $('search').value = '';
-  state.recipe = null;
-  $('progress').innerHTML = $('count').textContent = $('group').textContent = '';
-  $('needs').innerHTML = $('paras').innerHTML = $('items').innerHTML = $('photos').innerHTML = '';
-  applyLang();
-  openLast();
-}
-
-function openLast() {
-  const last = store.get(`hfr.${lang}.last`);
-  if (last && last.id) openRecipe(last.id, last.page);
-  else openRecipe(provider.defaultId);
-}
+function setLang(l) { stopReading(); lang = l; store.set('hfr.lang', l); applyLang(); }
 
 /* ---------- Read aloud ---------- */
 const voices = { en: null, zh: null };
 function pickVoice() {
   const all = speechSynthesis.getVoices();
-  voices.en = all.find(v => /en[-_]US/i.test(v.lang) && v.localService)
-    || all.find(v => /en[-_]US/i.test(v.lang)) || all.find(v => /^en/i.test(v.lang)) || null;
+  voices.en = all.find(v => /en[-_]US/i.test(v.lang) && v.localService) || all.find(v => /^en/i.test(v.lang)) || null;
   voices.zh = all.find(v => /zh[-_]CN/i.test(v.lang)) || all.find(v => /^zh/i.test(v.lang)) || null;
 }
-if ('speechSynthesis' in window) {
-  pickVoice();
-  speechSynthesis.onvoiceschanged = pickVoice;
-}
+if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
 
 const forSpeech = {
   en: s => s
-    .replace(/(\d)\s*°\s*F\b/g, '$1 degrees Fahrenheit')
-    .replace(/(\d)\s*°?\s*C\b/g, '$1 degrees Celsius')
-    .replace(/°/g, ' degrees')
-    .replace(/(\d)\s*-\s*(\d)/g, '$1 to $2')
-    .replace(/(\d)\s*g\b/g, '$1 grams')
-    .replace(/(\d)\s*ml\b/gi, '$1 milliliters')
-    .replace(/(\d)\s*tbsp\b/gi, '$1 tablespoons')
-    .replace(/(\d)\s*tsp\b/gi, '$1 teaspoons')
-    .replace(/(\d)\s*mins?\b/gi, '$1 minutes'),
+    .replace(/½/g, ' and a half ').replace(/¼/g, ' a quarter ')
+    .replace(/(\d)\s*[–-]\s*(\d)/g, '$1 to $2')
+    .replace(/(\d)\s*g\b/g, '$1 grams').replace(/(\d)\s*ml\b/gi, '$1 milliliters')
+    .replace(/(\d)\s*mm\b/g, '$1 millimeters').replace(/(\d)\s*cm\b/g, '$1 centimeters')
+    .replace(/(\d)\s*L\b/g, '$1 liter').replace(/\btbsp\b/g, 'tablespoons').replace(/\btsp\b/g, 'teaspoons')
+    .replace(/→/g, ', then '),
   zh: s => s
-    .replace(/`/g, '')
-    .replace(/(\d)\s*[-~～]\s*(\d)/g, '$1到$2')
-    .replace(/\s\*\s/g, ' 乘 ')
-    .replace(/(\d)\s*kg/gi, '$1千克')
-    .replace(/(\d)\s*ml/gi, '$1毫升')
-    .replace(/(\d)\s*mm/gi, '$1毫米')
-    .replace(/(\d)\s*cm/gi, '$1厘米')
-    .replace(/(\d)\s*g\b/gi, '$1克')
-    .replace(/(\d)\s*L\b/g, '$1升')
-    .replace(/℃/g, '度'),
+    .replace(/(\d)\s*[–\-~]\s*(\d)/g, '$1到$2')
+    .replace(/1\/2/g, '半').replace(/(\d)\s*g\b/gi, '$1克').replace(/(\d)\s*ml/gi, '$1毫升')
+    .replace(/(\d)\s*mm/gi, '$1毫米').replace(/(\d)\s*cm/gi, '$1厘米').replace(/(\d)\s*L\b/g, '$1升')
+    .replace(/→/g, '，然后').replace(/[（）]/g, '，'),
 };
 
-const joinZh = arr => arr.map(s => s.replace(/[。．.；;，,：:\s]+$/, '')).join('。');
-
 function pageSpeech(p) {
-  if (lang === 'zh') {
-    if (p.type === 'overview') return `${p.text}。` + (p.items.length ? `需要准备：${p.items.join('、')}。` : '');
-    if (p.type === 'calc') return `用量。${joinZh(p.items)}。`;
-    let s = `第${p.n}步。${joinZh([p.text])}。`;
-    if (p.notes.length) s += `提示：${joinZh(p.notes)}。`;
-    if (p.needs.length) s += `需要：${p.needs.join('、')}。`;
-    return s;
+  const r = state.recipe;
+  const zh = lang === 'zh';
+  if (p.type === 'overview') return zh ? `${t(r.name)}。${t(r.intro)}` : `${t(r.name)}. ${t(r.intro)}`;
+  if (p.type === 'ingredients') {
+    return zh ? `需要：${r.ingredients.map(([n, a]) => t(n) + t(a)).join('、')}。`
+      : `You need: ${r.ingredients.map(([n, a]) => `${t(a)} ${t(n)}`).join(', ')}.`;
   }
-  if (p.type === 'overview') return `${p.text}. ` + (p.items.length ? `You will need: ${p.items.join(', ')}.` : '');
-  return `Step ${p.n}. ${p.text}` + (p.needs.length ? ` You need: ${p.needs.join(', ')}.` : '');
+  const s = p.step;
+  let out = '';
+  if (p.first) out += zh ? `第${p.n}步，在${t(ZONES[p.zone].name)}，${t(s.title)}。` : `Step ${p.n}, at the ${t(ZONES[p.zone].name)}: ${t(s.title)}. `;
+  out += t(p.text) + (zh ? '。' : '. ');
+  if (p.last && s.done) out += zh ? `做好的样子：${t(s.done)}。` : `Done when: ${t(s.done)}. `;
+  if (p.last && s.warn) out += zh ? `注意：${t(s.warn)}。` : `Careful: ${t(s.warn)}.`;
+  return out;
 }
 
-let reading = false;   // true from speak() until the voice finishes or is stopped
+let reading = false;
 let current = null;
 function setReading(on) {
   reading = on;
-  $('reading').hidden = !on;
+  $('readBtn').textContent = on ? T.stop : T.read;
+  $('readBtn').classList.toggle('reading', on);
 }
-
 function speak(text) {
   if (!('speechSynthesis' in window)) { flash(T.noSpeech); return; }
   speechSynthesis.cancel();
@@ -775,9 +1042,8 @@ function speak(text) {
   u.onend = u.onerror = () => { if (current === u) setReading(false); };
   current = u;
   setReading(true);
-  setTimeout(() => { if (current === u) speechSynthesis.speak(u); }, 60);   // Chrome sometimes drops speak() right after cancel()
+  setTimeout(() => { if (current === u) speechSynthesis.speak(u); }, 60);
 }
-
 function stopReading() {
   current = null;
   if ('speechSynthesis' in window) speechSynthesis.cancel();
@@ -785,161 +1051,157 @@ function stopReading() {
 }
 
 /* ---------- Pedal gestures ---------- */
-// While the voice is reading, a tap or double tap only stops it; the next tap turns the page.
-// Hold always reads the current page again from the start.
-function onTap() {
-  if (reading) { stopReading(); flash(T.stopped); return; }
-  next();
-}
-function onDoubleTap() {
-  if (reading) { stopReading(); flash(T.stopped); return; }
-  prev();
-}
-function onHold() {
-  readPage();
-}
+function onTap() { if (reading) { stopReading(); flash(T.stopped); return; } next(); }
+function onDoubleTap() { if (reading) { stopReading(); flash(T.stopped); return; } prev(); }
+function onHold() { readPage(); }
 
-/* ---------- Actions ---------- */
+function goPage(i) {
+  const r = state.recipe;
+  if (!r) return;
+  state.page = Math.max(0, Math.min(i, r.pages.length - 1));
+  render();
+  if (state.autoRead) readPage();
+}
 function next() {
   const r = state.recipe;
-  if (!r) return flash(T.chooseFirst);
-  if (state.page >= r.pages.length - 1) { flash(T.last); speak(T.last); return; }
-  state.page++;
-  render();
-  flash(T.next);
-  if (state.autoRead) readPage();
+  if (!r) return;
+  if (state.page >= r.pages.length - 1) { flash(T.last); return; }
+  goPage(state.page + 1);
 }
 function prev() {
-  const r = state.recipe;
-  if (!r) return flash(T.chooseFirst);
+  if (!state.recipe) return;
   if (state.page === 0) { flash(T.first); return; }
-  state.page--;
-  render();
-  flash(T.prev);
-  if (state.autoRead) readPage();
+  goPage(state.page - 1);
 }
-function readPage() {
-  const r = state.recipe;
-  if (!r) return flash(T.chooseFirst);
-  flash(T.readFlash);
-  speak(pageSpeech(r.pages[state.page]));
-}
+function readPage() { if (state.recipe) speak(pageSpeech(page())); }
 
 function goStation(i) {
   if (port) send(`GOTO ${i}`);
-  else { state.facing = i; renderStations(); }   // no hardware: simulate on screen only
+  else { state.at = i; render(); pingZone(i); }
 }
 function toggleLock() {
   state.locked = !state.locked;
   if (port) send(state.locked ? 'LOCK' : 'UNLOCK');
-  renderStations();
+  renderToggles();
+  render();
   flash(state.locked ? T.locked : T.unlocked);
 }
-
-/* ---------- Load a recipe ---------- */
-let loadSeq = 0;
-async function openRecipe(id, page = 0, name = '') {
-  const seq = ++loadSeq;
-  const forLang = lang;
-  $('stepText').className = 'title';
-  $('stepText').textContent = T.loading(name);
-  try {
-    const parsed = await provider.load(id);
-    if (seq !== loadSeq || forLang !== lang) return;   // a newer load or a language switch won
-    state.recipe = parsed;
-    state.page = Math.min(page, parsed.pages.length - 1);
-    render();
-  } catch (e) {
-    if (seq !== loadSeq) return;
-    $('stepText').textContent = T.loadFail;
-    log('Load failed: ' + id + ' ' + e);
-  }
+function renderToggles() {
+  $('lockBtn').setAttribute('aria-pressed', state.locked);
+  $('autoBtn').setAttribute('aria-pressed', state.autoRead);
 }
 
 /* ---------- Recipe picker ---------- */
-let activeCat = store.get(`hfr.${lang}.cat`) ?? provider.defaultCat;
-let categories = [];
-let rows = [];
-
-function renderList() {
-  $('recipeList').innerHTML = rows.map(m =>
-    `<button data-id="${esc(m.id)}" data-name="${esc(m.name)}">${esc(m.name)}<small>${esc(m.sub || '')}</small></button>`).join('')
-    || `<p style="padding:12px;color:var(--muted)">${T.nothing}</p>`;
+function openRecipe(id, pageIdx = 0) {
+  const r = RECIPES.find(x => x.id === id) || RECIPES[0];
+  state.recipe = { ...r, pages: pagesOf(r) };
+  state.page = Math.max(0, Math.min(pageIdx, state.recipe.pages.length - 1));
+  stopReading();
+  render();
+  renderPicker();
 }
-function renderCats() {
-  $('cats').innerHTML = categories.map(c =>
-    `<button data-cat="${esc(c.key)}" aria-pressed="${c.key === activeCat}">${esc(c.label)}</button>`).join('');
+function renderPicker() {
+  $('recipeCards').innerHTML = RECIPES.map(r => {
+    const route = r.steps.map(s => `<span class="rc" style="--z:var(--z-${s.zone})">${ZONES[s.zone].icon}</span>`).join('');
+    return `<button class="recipe-card ${state.recipe?.id === r.id ? 'current' : ''}" data-id="${r.id}">
+      <div class="rn">${esc(t(r.name))}</div>
+      <div class="rm">${T.serves(r.serves)} · ${T.minutes(r.minutes)} · ${T.stepsN(r.steps.length)}</div>
+      <div class="route-chips">${route}</div>
+    </button>`;
+  }).join('');
 }
-async function loadRows(fetchRows) {
-  $('recipeList').innerHTML = `<p style="padding:12px;color:var(--muted)">${T.loadingList}</p>`;
-  try { rows = await fetchRows(); }
-  catch (e) { rows = []; log('List failed: ' + e); }
-  renderList();
-}
-async function openPicker() {
-  $('picker').showModal();
-  $('search').focus();
-  if (!categories.length) {
-    try { categories = await provider.categories(); }
-    catch (e) { log('Categories failed: ' + e); }
-  }
-  renderCats();
-  if (!rows.length) loadRows(() => provider.list(activeCat));
-}
-let searchTimer;
-$('recipeBtn').onclick = openPicker;
-$('search').oninput = () => {
-  clearTimeout(searchTimer);
-  const q = $('search').value.trim();
-  searchTimer = setTimeout(() => {
-    if (q) { activeCat = null; renderCats(); loadRows(() => provider.search(q)); }
-  }, 300);
-};
-$('cats').onclick = e => {
-  const b = e.target.closest('button');
-  if (!b) return;
-  activeCat = b.dataset.cat;
-  store.set(`hfr.${lang}.cat`, activeCat);
-  $('search').value = '';
-  renderCats();
-  loadRows(() => provider.list(activeCat));
-};
-$('recipeList').onclick = e => {
-  const b = e.target.closest('button[data-id]');
+$('recipeBtn').onclick = () => $('picker').showModal();
+$('recipeCards').onclick = e => {
+  const b = e.target.closest('[data-id]');
   if (!b) return;
   $('picker').close();
-  openRecipe(b.dataset.id, 0, b.dataset.name);
+  openRecipe(b.dataset.id, 0);
 };
-$('picker').addEventListener('click', e => { if (e.target === $('picker')) $('picker').close(); });
+
+/* ---------- Kitchen layout editor ---------- */
+const LAYOUT_ICONS = {
+  line: '<svg viewBox="0 0 54 38"><rect x="3" y="14" width="48" height="10" rx="2"/></svg>',
+  l: '<svg viewBox="0 0 54 38"><rect x="3" y="6" width="48" height="10" rx="2"/><rect x="3" y="6" width="10" height="28" rx="2"/></svg>',
+  galley: '<svg viewBox="0 0 54 38"><rect x="3" y="4" width="48" height="9" rx="2"/><rect x="3" y="25" width="48" height="9" rx="2"/></svg>',
+  island: '<svg viewBox="0 0 54 38"><rect x="3" y="4" width="48" height="9" rx="2"/><rect x="15" y="22" width="24" height="10" rx="2"/></svg>',
+};
+function renderLayoutEditor() {
+  $('layoutTypes').innerHTML = Object.entries(T.layouts).map(([k, [name, sub]]) =>
+    `<label>${LAYOUT_ICONS[k]}<input type="radio" name="ltype" value="${k}" ${k === layout.type ? 'checked' : ''} ${k === 'line' ? '' : 'disabled'}>${name}<small>${sub}</small></label>`).join('');
+  $('layoutPreview').innerHTML = stripHTML(null, { preview: true });
+  const lastIdx = layout.order.length - 1;
+  $('zoneList').innerHTML = layout.order.map((z, i) => {
+    const opts = [0, 1, 2].map(p => `<option value="${p}" ${layout.pedal[z] === p ? 'selected' : ''}>${T.pedalN(p + 1)}</option>`).join('')
+      + `<option value="-1" ${layout.pedal[z] === -1 ? 'selected' : ''}>${T.noPedal}</option>`;
+    return `<li style="--z:var(--z-${z})">
+      <span class="pos">${i + 1}</span><span class="zi">${ZONES[z].icon}</span>
+      <span class="zt"><b>${esc(t(ZONES[z].name))}</b><small>${esc(t(ZONES[z].what))}</small></span>
+      <select data-pedal="${z}" aria-label="pedal">${opts}</select>
+      <button data-move="${z}" data-dir="-1" ${i === 0 ? 'disabled' : ''} title="${T.moveLeft}" aria-label="${T.moveLeft}">↑</button>
+      <button data-move="${z}" data-dir="1" ${i === lastIdx ? 'disabled' : ''} title="${T.moveRight}" aria-label="${T.moveRight}">↓</button>
+    </li>`;
+  }).join('');
+}
+$('zoneList').onclick = e => {
+  const b = e.target.closest('[data-move]');
+  if (!b) return;
+  const i = layout.order.indexOf(b.dataset.move), j = i + +b.dataset.dir;
+  if (j < 0 || j >= layout.order.length) return;
+  [layout.order[i], layout.order[j]] = [layout.order[j], layout.order[i]];
+  saveLayout();
+};
+$('zoneList').onchange = e => {
+  const s = e.target.closest('[data-pedal]');
+  if (!s) return;
+  layout.pedal[s.dataset.pedal] = +s.value;
+  saveLayout();
+};
+$('resetLayout').onclick = () => { layout = structuredClone(DEFAULT_LAYOUT); saveLayout(); };
+$('settingsBtn').onclick = () => $('settings').showModal();
+document.querySelectorAll('dialog').forEach(d => {
+  d.addEventListener('click', e => { if (e.target === d || e.target.closest('[data-close]')) d.close(); });
+  d.addEventListener('close', () => fit());
+});
+
+/* ---------- Clicks on the page ---------- */
+$('strip').onclick = e => {
+  const z = e.target.closest('[data-zone]')?.dataset.zone;
+  if (!z) return;
+  const p = layout.pedal[z];
+  if (p < 0) { flash(T.noPedalThere); return; }
+  goStation(p);
+};
+document.addEventListener('click', e => {
+  const pg = e.target.closest('#progress [data-page]');
+  if (pg) { goPage(+pg.dataset.page); return; }
+});
+$('prevBtn').onclick = () => onDoubleTap();
+$('nextBtn').onclick = () => onTap();
+$('readBtn').onclick = () => (reading ? stopReading() : readPage());
 
 /* ---------- Web Serial ---------- */
 let port = null;
 let writer = null;
-let connErr = '';   // key into I18N for the last connection problem
+let connErr = '';
 
 function log(line) {
   const el = $('log');
   el.textContent = (el.textContent + line + '\n').split('\n').slice(-200).join('\n');
   el.scrollTop = el.scrollHeight;
 }
-
 async function send(cmd) {
   if (!writer) return;
   log('→ ' + cmd);
   await writer.write(cmd + '\n');
 }
-
-function setConnected(on, err = '') {
-  connErr = on ? '' : err;
-  refreshConn();
-}
+function setConnected(on, err = '') { connErr = on ? '' : err; refreshConn(); }
 function refreshConn() {
   const on = !!port;
   $('connDot').className = 'dot' + (on ? ' on' : connErr ? ' err' : '');
-  $('conn').className = 'conn' + (connErr ? ' err' : '');
   $('connText').textContent = on ? T.connected : connErr ? T.failed : T.notConnected;
-  $('connectBtn').textContent = on ? T.disconnect : T.connect;
+  $('connectBtn').title = on ? T.disconnect : T.notConnected;
   $('hint').textContent = connErr ? T[connErr] : '';
+  fit();
 }
 
 function handleLine(line) {
@@ -947,67 +1209,47 @@ function handleLine(line) {
   const [cmd, a] = line.trim().split(/\s+/);
   const i = parseInt(a, 10);
   switch (cmd) {
-    case 'READY':
-      if (state.locked) send('LOCK');
-      break;
+    case 'READY': if (state.locked) send('LOCK'); break;
     case 'STATION':
-      state.facing = i; state.moving = true; renderStations(i);
-      flash(T.turning(T.stations[i]));
+      state.at = i; state.moving = true; render(); pingZone(i);
+      flash(T.turning(zonesAt(i).map(z => t(ZONES[z].name)).join(' / ') || T.pedalN(i + 1)));
       break;
-    case 'ARRIVED':
-      state.facing = i; state.moving = false; renderStations();
-      break;
-    case 'NEXT': renderStations(i); onTap(); break;
-    case 'PREV': renderStations(i); onDoubleTap(); break;
-    case 'READ': renderStations(i); onHold(); break;
-    case 'LOCK': state.locked = a === '1'; renderStations(); break;
-    case 'STATUS': {   // STATUS facing=1 angle=90 locked=0
+    case 'ARRIVED': state.at = i; state.moving = false; render(); break;
+    // The pedal that was pressed tells us where the person is standing (also while turning is locked)
+    case 'NEXT': state.at = i; onTap(); render(); pingZone(i); break;
+    case 'PREV': state.at = i; onDoubleTap(); render(); pingZone(i); break;
+    case 'READ': state.at = i; onHold(); render(); pingZone(i); break;
+    case 'LOCK': state.locked = a === '1'; renderToggles(); render(); break;
+    case 'STATUS': {
       const f = line.match(/facing=(\d)/), l = line.match(/locked=(\d)/);
-      if (f) state.facing = +f[1];
+      if (f) state.at = +f[1];
       if (l && (l[1] === '1') !== state.locked) send(state.locked ? 'LOCK' : 'UNLOCK');
       state.moving = false;
-      renderStations();
+      render();
       break;
     }
   }
 }
 
 async function openPort(p) {
-  try {
-    await p.open({ baudRate: 115200 });
-  } catch (e) {
-    log('Open failed: ' + e.name + ' ' + e.message);
-    // Usually the port is held by another program, most often the Arduino IDE Serial Monitor
-    setConnected(false, 'busy');
-    return false;
-  }
+  try { await p.open({ baudRate: 115200 }); }
+  catch (e) { log('Open failed: ' + e.name + ' ' + e.message); setConnected(false, 'busy'); return false; }
   port = p;
   setConnected(true);
   const encoder = new TextEncoderStream();
   encoder.readable.pipeTo(port.writable).catch(() => {});
   writer = encoder.writable.getWriter();
   readLoop();
-  // Boards on native USB (ESP32-C6) do not restart when the port opens, so ask where the screen is facing
   setTimeout(() => send('STATUS'), 300);
   return true;
 }
-
 async function connect() {
-  if (!('serial' in navigator)) {
-    setConnected(false, 'noSerial');
-    return;
-  }
+  if (!('serial' in navigator)) { setConnected(false, 'noSerial'); return; }
   let p;
-  try {
-    p = await navigator.serial.requestPort();
-  } catch (e) {
-    log('No port chosen: ' + e.message);
-    setConnected(false, 'noPort');
-    return;
-  }
+  try { p = await navigator.serial.requestPort(); }
+  catch (e) { log('No port chosen: ' + e.message); setConnected(false, 'noPort'); return; }
   openPort(p);
 }
-
 async function readLoop() {
   const dec = new TextDecoderStream();
   const closed = port.readable.pipeTo(dec.writable).catch(() => {});
@@ -1026,13 +1268,10 @@ async function readLoop() {
         if (line) handleLine(line);
       }
     }
-  } catch (e) {
-    log('Serial disconnected: ' + e.message);
-  }
+  } catch (e) { log('Serial disconnected: ' + e.message); }
   await closed;
   disconnect();
 }
-
 async function disconnect() {
   if (!port) return;
   const p = port;
@@ -1043,8 +1282,6 @@ async function disconnect() {
   try { await p.close(); } catch (e) {}
   setConnected(false);
 }
-
-// Reconnect on its own to a port this page was allowed to use before
 async function autoConnect() {
   if (!('serial' in navigator) || port) return;
   const ports = await navigator.serial.getPorts();
@@ -1057,26 +1294,25 @@ if ('serial' in navigator) {
 
 $('connectBtn').onclick = () => (port ? disconnect() : connect());
 $('lockBtn').onclick = toggleLock;
-$('autoBtn').onclick = () => { state.autoRead = !state.autoRead; store.set('hfr.auto', state.autoRead); renderStations(); };
+$('autoBtn').onclick = () => { state.autoRead = !state.autoRead; store.set('hfr.auto', state.autoRead); renderToggles(); };
 $('langBtn').onclick = () => setLang(lang === 'en' ? 'zh' : 'en');
 
 /* ---------- Keyboard (testing without hardware) ---------- */
 document.addEventListener('keydown', e => {
-  if ($('picker').open || e.target.tagName === 'INPUT') return;
+  if (document.querySelector('dialog[open]') || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
   if (e.key === 'ArrowRight') onTap();
   else if (e.key === 'ArrowLeft') onDoubleTap();
   else if (e.key === ' ') { e.preventDefault(); onHold(); }
   else if (['1', '2', '3'].includes(e.key)) goStation(+e.key - 1);
   else if (e.key === 'l' || e.key === 'L') toggleLock();
   else if (e.key === 'a' || e.key === 'A') $('autoBtn').click();
-  else if (e.key === '/') { e.preventDefault(); openPicker(); }
+  else if (e.key === '/') { e.preventDefault(); $('picker').showModal(); }
 });
 
 /* ---------- Start ---------- */
-state.autoRead = !!store.get('hfr.auto');
+const lastOpen = store.get('hfr.last');
+openRecipe(lastOpen?.id || RECIPES[0].id, lastOpen?.page || 0);
 applyLang();
-$('stepText').textContent = T.start;
-openLast();
 autoConnect();
 </script>
 </body>
