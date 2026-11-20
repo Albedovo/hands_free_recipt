@@ -375,6 +375,44 @@
     .zone-list li .zped { grid-column: 3 / -1; grid-row: 2; }
   }
   @media (max-height: 560px) { .legend { display: none; } }
+
+  /* ---------- Phone landscape: kitchen bar on the left, page on the right ---------- */
+  @media (orientation: landscape) and (max-height: 500px) {
+    header {
+      padding: 4px max(14px, env(safe-area-inset-right)) 4px max(14px, env(safe-area-inset-left));
+      padding-top: max(4px, env(safe-area-inset-top));
+    }
+    header button { padding: 5px 12px; font-size: 15px; }
+    .brand { font-size: 15px; }
+    .hint { padding: 4px 16px; font-size: 13px; }
+    main { flex-direction: row; }
+    .top {
+      flex: 0 0 40%; max-width: 360px;
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 2px 10px 6px max(10px, env(safe-area-inset-left));
+      border-bottom: none; border-right: 1px solid var(--line);
+    }
+    .top-inner { width: 100%; gap: 5px; }
+    .flags { height: 20px; }
+    .zone { flex-direction: column; gap: 0; padding: 3px 1px; }
+    .zone .zt { align-items: center; }
+    .zone .zi { font-size: 18px; }
+    .zone .zn { font-size: 13px; }
+    .zone .zp { font-size: 10px; }
+    .track { height: 26px; }
+    .goal, .you { font-size: 12px; padding: 1px 8px; }
+    .banner { padding: 5px 10px; font-size: 15px; }
+    .body { padding: 6px max(12px, env(safe-area-inset-right)) 6px 12px; gap: 6px; max-width: none; }
+    .card { padding: .6em .9em; border-radius: 14px; font-size: calc(var(--fs) * clamp(16px, 5.5vh, 24px)); }
+    .step { border-top-width: 6px; }
+    .ing { columns: 3 9em; }
+    .ing li { padding: .25em 0; }
+    .next-line { font-size: 13px; padding: 4px 10px; }
+    .next-line .nl { font-size: 12px; }
+    footer { padding: 4px max(14px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); }
+    .controls { max-width: none; }
+    .controls button { font-size: 15px; padding: 6px 16px; }
+  }
 </style>
 </head>
 <body>

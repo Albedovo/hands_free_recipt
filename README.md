@@ -1,6 +1,6 @@
 # Hands-Free Recipe 原型：接线与使用说明
 
-**直接打开：<https://albedovo.github.io/hands_free_recipt/>**（手机竖屏也可以用；连接 Arduino 需要电脑上的 Chrome / Edge）
+**直接打开：<https://albedovo.github.io/hands_free_recipt/>**（手机竖屏、横屏都可以用，横屏时厨房条在左、步骤在右；连接 Arduino 需要电脑上的 Chrome / Edge）
 
 ## 文件
 
